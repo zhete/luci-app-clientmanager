@@ -28,7 +28,6 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 		( . /etc/uci-defaults/luci-clientmanager ) && rm -f /etc/uci-defaults/luci-clientmanager
 	fi
 	/etc/init.d/clientmanager enable 2>/dev/null
-	/etc/init.d/clientmanager start 2>/dev/null
 fi
 exit 0
 endef

@@ -23,72 +23,66 @@ jobs:
       - name: Build IPK package
         run: |
           # === 1. 准备文件目录 ===
-          mkdir -p pkg/CONTROL
-          mkdir -p pkg/usr/lib/lua/luci
-          mkdir -p pkg/www
+          mkdir -p data/usr/lib/lua/luci
+          mkdir -p data/www
+          mkdir -p control
           
           if [ -d "luasrc" ]; then
-            cp -r luasrc/* pkg/usr/lib/lua/luci/
+            cp -r luasrc/* data/usr/lib/lua/luci/
           fi
           
           if [ -d "root" ]; then
-            cp -r root/* pkg/
+            cp -r root/* data/
           fi
           
           if [ -d "htdocs" ]; then
-            cp -r htdocs/* pkg/www/
+            cp -r htdocs/* data/www/
           fi
           
-          # === 2. 创建 CONTROL/control ===
-          echo "Package: luci-app-clientmanager" > pkg/CONTROL/control
-          echo "Version: 1.0.0-1" >> pkg/CONTROL/control
-          echo "Architecture: aarch64_cortex-a53" >> pkg/CONTROL/control
-          echo "Section: luci" >> pkg/CONTROL/control
-          echo "Priority: optional" >> pkg/CONTROL/control
-          echo "Depends: libc, luci-lua-runtime" >> pkg/CONTROL/control
-          echo "Maintainer: OpenWrt Community" >> pkg/CONTROL/control
-          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg/CONTROL/control
-          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg/CONTROL/control
+          # === 2. 创建 control 文件 ===
+          echo "Package: luci-app-clientmanager" > control/control
+          echo "Version: 1.0.0-1" >> control/control
+          echo "Architecture: aarch64_cortex-a53" >> control/control
+          echo "Section: luci" >> control/control
+          echo "Priority: optional" >> control/control
+          echo "Depends: libc, luci-lua-runtime" >> control/control
+          echo "Maintainer: OpenWrt Community" >> control/control
+          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> control/control
+          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> control/control
           
           # === 3. 创建 postinst ===
-          echo '#!/bin/sh' > pkg/CONTROL/postinst
-          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> pkg/CONTROL/postinst
-          echo 'exit 0' >> pkg/CONTROL/postinst
-          chmod 755 pkg/CONTROL/postinst
+          echo '#!/bin/sh' > control/postinst
+          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> control/postinst
+          echo 'exit 0' >> control/postinst
+          chmod 755 control/postinst
           
           # === 4. 修正文件权限 ===
-          find pkg/ -type d -exec chmod 0755 {} +
-          find pkg/ -type f -exec chmod 0644 {} +
-          chmod 755 pkg/CONTROL/postinst
-          find pkg/ -name "*.sh" -exec chmod 755 {} +
+          find data/ -type d -exec chmod 0755 {} +
+          find data/ -type f -exec chmod 0644 {} +
+          find control/ -type d -exec chmod 0755 {} +
+          find control/ -type f -exec chmod 0644 {} +
+          chmod 755 control/postinst
+          find data/ -name "*.sh" -exec chmod 755 {} +
           
-          # === 5. 手动构建 .ipk（内联 opkg-build 逻辑） ===
-          # .ipk = ar 归档，包含: debian-binary + control.tar.gz + data.tar.gz
-          # 关键：control.tar.gz 和 data.tar.gz 都必须用 gzip 压缩
+          # === 5. 手动打包 .ipk（参照 OpenWrt 标准格式） ===
+          # 步骤严格按照: debian-binary -> control.tar.gz -> data.tar.gz -> ar
           
-          WORKDIR=$(mktemp -d)
+          # 5a. 创建 debian-binary
+          echo "2.0" > debian-binary
           
-          # 5a. debian-binary
-          printf '2.0\n' > "$WORKDIR/debian-binary"
+          # 5b. 打包 control.tar.gz
+          cd control
+          tar --owner=0 --group=0 -czf ../control.tar.gz ./*
+          cd ..
           
-          # 5b. control.tar.gz（进入 CONTROL 目录打包，确保路径以 ./ 开头）
-          cd pkg/CONTROL
-          tar czf "$WORKDIR/control.tar.gz" --owner=0 --group=0 --numeric-owner ./control ./postinst
-          cd "$OLDPWD"
+          # 5c. 打包 data.tar.gz
+          cd data
+          tar --owner=0 --group=0 -czf ../data.tar.gz ./*
+          cd ..
           
-          # 5c. data.tar.gz（进入 pkg 目录打包，排除 CONTROL）
-          cd pkg
-          tar czf "$WORKDIR/data.tar.gz" --owner=0 --group=0 --numeric-owner --exclude='./CONTROL' .
-          cd "$OLDPWD"
-          
-          # 5d. 用 ar 组装（成员顺序必须是: debian-binary, control.tar.gz, data.tar.gz）
+          # 5d. 用 ar 打包成 .ipk（注意：用 ar r，不用 ar rcs）
           mkdir -p output
-          ar rcs output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk \
-            "$WORKDIR/debian-binary" \
-            "$WORKDIR/control.tar.gz" \
-            "$WORKDIR/data.tar.gz"
-          
-          rm -rf "$WORKDIR"
+          ar r output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk debian-binary control.tar.gz data.tar.gz
           
           # === 6. 验证 ===
           echo "=== Output ==="

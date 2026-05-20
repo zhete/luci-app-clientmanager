@@ -20,10 +20,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install opkg-utils
+      - name: Install opkg-build
         run: |
-          sudo apt-get update
-          sudo apt-get install -y opkg-utils
+          wget -q https://raw.githubusercontent.com/openwrt/opkg-utils/master/opkg-build -O /usr/local/bin/opkg-build
+          chmod +x /usr/local/bin/opkg-build
 
       - name: Build IPK package
         run: |

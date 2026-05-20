@@ -20,11 +20,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install opkg-utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y opkg-utils
+
       - name: Build IPK package
         run: |
-          # === 1. 创建 dpkg-deb 所需的目录结构 ===
-          # dpkg-deb 使用 DEBIAN/ 目录存放控制信息
-          mkdir -p pkg/DEBIAN
+          # === 1. 创建 opkg-build 所需的目录结构 ===
+          # opkg-build 使用 CONTROL/ 目录（不是 DEBIAN/）
+          mkdir -p pkg/CONTROL
           mkdir -p pkg/usr/lib/lua/luci
           mkdir -p pkg/www
           
@@ -41,38 +46,42 @@ jobs:
             cp -r htdocs/* pkg/www/
           fi
           
-          # === 3. 创建 DEBIAN/control 文件 ===
-          echo "Package: luci-app-clientmanager" > pkg/DEBIAN/control
-          echo "Version: 1.0.0-1" >> pkg/DEBIAN/control
-          echo "Architecture: aarch64_cortex-a53" >> pkg/DEBIAN/control
-          echo "Section: luci" >> pkg/DEBIAN/control
-          echo "Priority: optional" >> pkg/DEBIAN/control
-          echo "Depends: libc, luci-lua-runtime" >> pkg/DEBIAN/control
-          echo "Maintainer: OpenWrt Community" >> pkg/DEBIAN/control
-          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg/DEBIAN/control
-          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg/DEBIAN/control
+          # === 3. 创建 CONTROL/control 文件 ===
+          echo "Package: luci-app-clientmanager" > pkg/CONTROL/control
+          echo "Version: 1.0.0-1" >> pkg/CONTROL/control
+          echo "Architecture: aarch64_cortex-a53" >> pkg/CONTROL/control
+          echo "Section: luci" >> pkg/CONTROL/control
+          echo "Priority: optional" >> pkg/CONTROL/control
+          echo "Depends: libc, luci-lua-runtime" >> pkg/CONTROL/control
+          echo "Maintainer: OpenWrt Community" >> pkg/CONTROL/control
+          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg/CONTROL/control
+          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg/CONTROL/control
           
           # === 4. 创建 postinst 脚本 ===
-          echo '#!/bin/sh' > pkg/DEBIAN/postinst
-          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> pkg/DEBIAN/postinst
-          echo 'exit 0' >> pkg/DEBIAN/postinst
-          chmod 755 pkg/DEBIAN/postinst
+          echo '#!/bin/sh' > pkg/CONTROL/postinst
+          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> pkg/CONTROL/postinst
+          echo 'exit 0' >> pkg/CONTROL/postinst
+          chmod 755 pkg/CONTROL/postinst
           
-          # === 5. 使用 dpkg-deb 构建标准 .ipk 包 ===
-          # .ipk 和 .deb 格式完全相同（ar 归档）
-          # -Zgzip 强制使用 gzip 压缩（opkg 不支持 zstd）
+          # === 5. 修正文件权限 ===
+          find pkg/ -exec chmod 0644 {} +
+          find pkg/ -type d -exec chmod 0755 {} +
+          chmod 755 pkg/CONTROL/postinst
+          find pkg/ -name "*.sh" -exec chmod 755 {} +
+          
+          # === 6. 使用 opkg-build 构建 .ipk ===
           mkdir -p output
-          dpkg-deb -Zgzip --build pkg output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk
+          opkg-build -O -Z gzip pkg/ output/
           
-          # === 6. 验证包格式 ===
-          echo "=== IPK file info ==="
+          # === 7. 验证 ===
+          echo "=== Output files ==="
           ls -la output/
           echo "=== ar archive contents ==="
-          ar t output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk
+          ar t output/*.ipk
           echo "=== control.tar.gz contents ==="
-          ar p output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk control.tar.gz | tar tzf -
+          ar p output/*.ipk control.tar.gz | tar tzf -
           echo "=== data.tar.gz sample ==="
-          ar p output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk data.tar.gz | tar tzf - | head -20
+          ar p output/*.ipk data.tar.gz | tar tzf - | head -20
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

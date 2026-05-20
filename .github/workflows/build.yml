@@ -43,10 +43,8 @@ jobs:
 
       - name: Prepare package
         run: |
-          # 创建构建目录结构
           mkdir -p build_pkg/${{ env.PKG_NAME }}
           
-          # 复制所有内容
           cp -r Makefile build_pkg/
           cp -r luasrc build_pkg/
           cp -r root build_pkg/
@@ -56,38 +54,31 @@ jobs:
             cp -r htdocs build_pkg/
           fi
           
-          # 创建控制文件（模拟 .ipk 结构）
           mkdir -p build_pkg/CONTROL
           
-          # 从 Makefile 提取基本信息
           PKG_VERSION=$(grep -oP 'PKG_VERSION:=\K[^ ]+' Makefile || echo "1.0.0")
           PKG_RELEASE=$(grep -oP 'PKG_RELEASE:=\K[^ ]+' Makefile || echo "1")
           
-          # 创建 control 文件
-          cat > build_pkg/CONTROL/control << EOF
-Package: ${{ env.PKG_NAME }}
-Version: $PKG_VERSION-$PKG_RELEASE
-Architecture: ${{ matrix.arch }}
-Section: luci
-Priority: optional
-Maintainer: OpenWrt Community <openwrt-devel@lists.openwrt.org>
-Source: ${{ github.server_url }}/${{ github.repository }}
-Description: Client manager for OpenWrt/ImmortalWrt
-EOF
+          # 不使用 << EOF，改为单独写入每一行
+          echo "Package: ${{ env.PKG_NAME }}" > build_pkg/CONTROL/control
+          echo "Version: $PKG_VERSION-$PKG_RELEASE" >> build_pkg/CONTROL/control
+          echo "Architecture: ${{ matrix.arch }}" >> build_pkg/CONTROL/control
+          echo "Section: luci" >> build_pkg/CONTROL/control
+          echo "Priority: optional" >> build_pkg/CONTROL/control
+          echo "Maintainer: OpenWrt Community" >> build_pkg/CONTROL/control
+          echo "Source: ${{ github.server_url }}/${{ github.repository }}" >> build_pkg/CONTROL/control
+          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> build_pkg/CONTROL/control
           
           echo "Package prepared successfully"
           ls -la build_pkg/
 
       - name: Build IPK package
         run: |
-          # 创建输出目录
           mkdir -p output
           
-          # 复制实际内容到临时位置，准备打包
           PKG_DIR=tmp_pkg
           mkdir -p $PKG_DIR
           
-          # 复制所有文件（按照 OpenWrt 包目录结构）
           if [ -d build_pkg/root ]; then
             cp -r build_pkg/root/* $PKG_DIR/
           fi
@@ -102,15 +93,12 @@ EOF
             cp -r build_pkg/htdocs/* $PKG_DIR/www/
           fi
           
-          # 编译翻译文件（如果有）
           if [ -d build_pkg/po ]; then
             for lang in $(ls build_pkg/po/ 2>/dev/null); do
               if [ -d "build_pkg/po/$lang" ]; then
                 mkdir -p $PKG_DIR/usr/lib/lua/luci/i18n
-                # 如果有 .po 文件，尝试编译它们
                 for pofile in build_pkg/po/$lang/*.po 2>/dev/null; do
                   if [ -f "$pofile" ]; then
-                    # 尝试编译为 .lmo
                     mo_file=$(basename $pofile .po).lmo
                     if command -v po2lmo >/dev/null 2>&1; then
                       po2lmo $pofile $PKG_DIR/usr/lib/lua/luci/i18n/$mo_file
@@ -123,21 +111,16 @@ EOF
             done
           fi
           
-          # 复制 CONTROL 文件
           cp -r build_pkg/CONTROL $PKG_DIR/
           
-          # 创建简单的 IPK 包
           PKG_VERSION=$(grep -oP 'PKG_VERSION:=\K[^ ]+' Makefile || echo "1.0.0")
           PKG_RELEASE=$(grep -oP 'PKG_RELEASE:=\K[^ ]+' Makefile || echo "1")
           
           IPK_NAME="${{ env.PKG_NAME }}_${PKG_VERSION}-${PKG_RELEASE}_${{ matrix.arch }}.ipk"
           
-          # 使用 tar 打包，IPK 其实就是一个 tar.gz 文件
           cd $PKG_DIR && tar -czf ../output/$IPK_NAME --owner=0 --group=0 *
           
           echo "Package built: $IPK_NAME"
-          
-          # 显示结果
           ls -la output/
 
       - name: Upload artifacts
@@ -171,10 +154,10 @@ EOF
           body: |
             ## luci-app-clientmanager ${{ github.ref_name }}
             
-            ### 安装
+            ### Installation
             ```bash
             opkg install luci-app-clientmanager_*.ipk
             ```
             
-            ### 支持架构
+            ### Supported architectures
             - qualcommax-ipq60xx (Link NN6000V2)

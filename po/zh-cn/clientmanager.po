@@ -1,0 +1,171 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: PACKAGE VERSION\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Client Manager"
+msgstr "客户端管理"
+
+msgid "Device Overview"
+msgstr "设备概览"
+
+msgid "Access Control"
+msgstr "访问控制"
+
+msgid "Traffic Statistics"
+msgstr "流量统计"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "View all connected devices on your network"
+msgstr "查看网络上的所有连接设备"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Device Name"
+msgstr "设备名称"
+
+msgid "IP Address"
+msgstr "IP地址"
+
+msgid "MAC Address"
+msgstr "MAC地址"
+
+msgid "Vendor"
+msgstr "厂商"
+
+msgid "Type"
+msgstr "类型"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "Offline"
+msgstr "离线"
+
+msgid "Block"
+msgstr "阻断"
+
+msgid "Unblock"
+msgstr "解除阻断"
+
+msgid "Limit"
+msgstr "限速"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Block device"
+msgstr "阻断设备"
+
+msgid "Device blocked successfully"
+msgstr "设备已成功阻断"
+
+msgid "Failed to block device"
+msgstr "阻断设备失败"
+
+msgid "Enter download speed limit (KB/s, 0 for unlimited):"
+msgstr "输入下载速度限制（KB/s，0表示无限制）："
+
+msgid "Enter upload speed limit (KB/s, 0 for unlimited):"
+msgstr "输入上传速度限制（KB/s，0表示无限制）："
+
+msgid "Speed limit applied"
+msgstr "限速已应用"
+
+msgid "Failed to apply speed limit"
+msgstr "应用限速失败"
+
+msgid "Client Manager Settings"
+msgstr "客户端管理设置"
+
+msgid "Configure global settings for client management"
+msgstr "配置客户端管理的全局设置"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Enable Client Manager"
+msgstr "启用客户端管理"
+
+msgid "Auto-block new devices"
+msgstr "自动阻断新设备"
+
+msgid "Automatically block new devices connecting to the network"
+msgstr "自动阻断连接到网络的新设备"
+
+msgid "Enable traffic monitoring"
+msgstr "启用流量监控"
+
+msgid "Data retention (days)"
+msgstr "数据保留（天）"
+
+msgid "Number of days to keep traffic history"
+msgstr "保留流量历史的天数"
+
+msgid "Device scan interval"
+msgstr "设备扫描间隔"
+
+msgid "30 seconds"
+msgstr "30秒"
+
+msgid "1 minute"
+msgstr "1分钟"
+
+msgid "5 minutes"
+msgstr "5分钟"
+
+msgid "10 minutes"
+msgstr "10分钟"
+
+msgid "Notifications"
+msgstr "通知"
+
+msgid "Enable notifications"
+msgstr "启用通知"
+
+msgid "Notify on new device"
+msgstr "新设备通知"
+
+msgid "Notify when device blocked"
+msgstr "设备被阻断时通知"
+
+msgid "Notification email"
+msgstr "通知邮箱"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Computer"
+msgstr "电脑"
+
+msgid "Mobile"
+msgstr "手机"
+
+msgid "Tablet"
+msgstr "平板"
+
+msgid "Smart TV"
+msgstr "智能电视"
+
+msgid "IoT Device"
+msgstr "物联网设备"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "Game Console"
+msgstr "游戏机"

@@ -1,0 +1,151 @@
+<%+header%>
+
+<div class="cbi-map">
+    <h2><%:Access Control%></h2>
+    <div class="cbi-section-descr">
+        <%:Manage device access and speed limits%>
+    </div>
+
+    <!-- Blocked Devices Section -->
+    <div class="cbi-section">
+        <h3><%:Blocked Devices%></h3>
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="blocked-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:Status%></th>
+                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                    </tr>
+                </thead>
+                <tbody id="blocked-list">
+                    <% for _, mac in ipairs(blocked_devices) do
+                        if mac and mac ~= "" then %>
+                    <tr class="cbi-section-table-row">
+                        <td class="cbi-section-table-cell"><%=mac%></td>
+                        <td class="cbi-section-table-cell">
+                            <span class="label error"><%:Blocked%></span>
+                        </td>
+                        <td class="cbi-section-table-cell">
+                            <button class="btn cbi-button cbi-button-positive" onclick="unblockDevice('<%=mac%>')">
+                                <%:Unblock%>
+                            </button>
+                        </td>
+                    </tr>
+                    <%  end
+                    end %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Speed Limited Devices Section -->
+    <div class="cbi-section">
+        <h3><%:Speed Limited Devices%></h3>
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="limited-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:Download Limit%></th>
+                        <th class="cbi-section-table-cell"><%:Upload Limit%></th>
+                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                    </tr>
+                </thead>
+                <tbody id="limited-list">
+                    <% for mac, limits in pairs(limited_devices) do
+                        if mac and mac ~= "" then %>
+                    <tr class="cbi-section-table-row">
+                        <td class="cbi-section-table-cell"><%=mac%></td>
+                        <td class="cbi-section-table-cell">
+                            <%=limits.download ~= "0" and limits.download .. " kbps" or "<%:Unlimited%>"%>
+                        </td>
+                        <td class="cbi-section-table-cell">
+                            <%=limits.upload ~= "0" and limits.upload .. " kbps" or "<%:Unlimited%>"%>
+                        </td>
+                        <td class="cbi-section-table-cell">
+                            <button class="btn cbi-button cbi-button-negative" onclick="removeLimit('<%=mac%>')">
+                                <%:Remove Limit%>
+                            </button>
+                        </td>
+                    </tr>
+                    <%  end
+                    end %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+    function unblockDevice(mac) {
+        if (confirm('<%:Unblock device%> ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', {
+                'mac': mac
+            }, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    alert('<%:Device unblocked successfully%>');
+                    location.reload();
+                } else {
+                    alert('<%:Failed to unblock device%>:' + (result.error || ''));
+                }
+            });
+        }
+    }
+
+    function removeLimit(mac) {
+        if (confirm('<%:Remove speed limit for%> ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', {
+                'mac': mac,
+                'download': '0',
+                'upload': '0'
+            }, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    alert('<%:Speed limit removed%>');
+                    location.reload();
+                } else {
+                    alert('<%:Failed to remove speed limit%>:' + (result.error || ''));
+                }
+            });
+        }
+    }
+//]]>
+</script>
+
+<style type="text/css">
+    .label {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .label.success {
+        background-color: #46a546;
+        color: white;
+    }
+    .label.warning {
+        background-color: #f89406;
+        color: white;
+    }
+    .label.error {
+        background-color: #9d261d;
+        color: white;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    .cbi-section {
+        margin-bottom: 20px;
+    }
+    .cbi-section h3 {
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+    }
+</style>
+
+<%+footer%>

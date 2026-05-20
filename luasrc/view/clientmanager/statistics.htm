@@ -1,0 +1,167 @@
+<%+header%>
+
+<div class="cbi-map">
+    <h2><%:Traffic Statistics%></h2>
+    <div class="cbi-section-descr">
+        <%:View traffic usage statistics for all devices%>
+    </div>
+
+    <div class="cbi-section">
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Devices%></div>
+                <div class="stat-value" id="total-devices">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Download%></div>
+                <div class="stat-value" id="total-download">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Upload%></div>
+                <div class="stat-value" id="total-upload">-</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="stats-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:Device Name%></th>
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:IP Address%></th>
+                        <th class="cbi-section-table-cell"><%:Download%></th>
+                        <th class="cbi-section-table-cell"><%:Upload%></th>
+                        <th class="cbi-section-table-cell"><%:Total%></th>
+                        <th class="cbi-section-table-cell"><%:Last Seen%></th>
+                    </tr>
+                </thead>
+                <tbody id="stats-list">
+                    <!-- Data will be loaded via AJAX -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="cbi-section-actions">
+            <button class="btn cbi-button cbi-button-refresh" onclick="refreshStats()">
+                <%:Refresh%>
+            </button>
+            <button class="btn cbi-button cbi-button-negative" onclick="resetStats()">
+                <%:Reset Statistics%>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        var k = 1024;
+        var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function loadStats() {
+        new XHR().get('<%=url("admin/network/clientmanager/api/traffic")%>', null, function(xhr, data) {
+            var result = JSON.parse(xhr.responseText);
+            if (result.success && result.data) {
+                updateStatsTable(result.data);
+            }
+        });
+    }
+
+    function updateStatsTable(data) {
+        var tbody = document.getElementById('stats-list');
+        tbody.innerHTML = '';
+
+        var totalDownload = 0;
+        var totalUpload = 0;
+
+        if (data.devices && data.devices.length > 0) {
+            data.devices.forEach(function(device) {
+                totalDownload += parseInt(device.download) || 0;
+                totalUpload += parseInt(device.upload) || 0;
+
+                var row = document.createElement('tr');
+                row.className = 'cbi-section-table-row';
+                row.innerHTML = '<td class="cbi-section-table-cell">' + (device.hostname || 'Unknown') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + device.mac + '</td>' +
+                               '<td class="cbi-section-table-cell">' + (device.ip || '-') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(device.download) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(device.upload) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(parseInt(device.download) + parseInt(device.upload)) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + (device.last_seen || '-') + '</td>';
+                tbody.appendChild(row);
+            });
+        } else {
+            var row = document.createElement('tr');
+            row.innerHTML = '<td colspan="7" class="cbi-section-table-cell" style="text-align: center;"><%:No data available%></td>';
+            tbody.appendChild(row);
+        }
+
+        // Update summary
+        document.getElementById('total-devices').textContent = data.devices ? data.devices.length : 0;
+        document.getElementById('total-download').textContent = formatBytes(totalDownload);
+        document.getElementById('total-upload').textContent = formatBytes(totalUpload);
+    }
+
+    function refreshStats() {
+        loadStats();
+    }
+
+    function resetStats() {
+        if (confirm('<%:Are you sure you want to reset all statistics? This action cannot be undone.%>')) {
+            // Call reset script via backend
+            new XHR().post('<%=url("admin/network/clientmanager/api/reset")%>', {}, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    alert('<%:Statistics reset successfully%>');
+                    loadStats();
+                }
+            });
+        }
+    }
+
+    // Load stats on page load
+    document.addEventListener('DOMContentLoaded', loadStats);
+//]]>
+</script>
+
+<style type="text/css">
+    .stats-summary {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .stat-card {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px 20px;
+        min-width: 150px;
+        text-align: center;
+    }
+    .stat-title {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    .cbi-section-actions {
+        margin-top: 15px;
+    }
+    .cbi-section-actions button {
+        margin-right: 10px;
+    }
+</style>
+
+<%+footer%>

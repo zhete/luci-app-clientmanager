@@ -1,0 +1,134 @@
+<%+header%>
+
+<div class="cbi-map">
+    <h2><%:Device Overview%></h2>
+    <div class="cbi-section-descr">
+        <%:View all connected devices on your network%>
+    </div>
+
+    <div class="cbi-section">
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="device-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:Status%></th>
+                        <th class="cbi-section-table-cell"><%:Device Name%></th>
+                        <th class="cbi-section-table-cell"><%:IP Address%></th>
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:Vendor%></th>
+                        <th class="cbi-section-table-cell"><%:Type%></th>
+                        <th class="cbi-section-table-cell"><%:Interface%></th>
+                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                    </tr>
+                </thead>
+                <tbody id="device-list">
+                    <% for _, device in ipairs(devices) do %>
+                    <tr class="cbi-section-table-row">
+                        <td class="cbi-section-table-cell">
+                            <% if device.online then %>
+                                <span class="label success"><%:Online%></span>
+                            <% else %>
+                                <span class="label warning"><%:Offline%></span>
+                            <% end %>
+                        </td>
+                        <td class="cbi-section-table-cell"><%=device.hostname%></td>
+                        <td class="cbi-section-table-cell"><%=device.ip%></td>
+                        <td class="cbi-section-table-cell"><%=device.mac%></td>
+                        <td class="cbi-section-table-cell"><%=device.vendor%></td>
+                        <td class="cbi-section-table-cell"><%=device.type%></td>
+                        <td class="cbi-section-table-cell"><%=device.interface%></td>
+                        <td class="cbi-section-table-cell">
+                            <button class="btn cbi-button cbi-button-action" onclick="blockDevice('<%=device.mac%>', '<%=device.hostname%>')">
+                                <%:Block%>
+                            </button>
+                            <button class="btn cbi-button cbi-button-edit" onclick="limitDevice('<%=device.mac%>', '<%=device.hostname%>')">
+                                <%:Limit%>
+                            </button>
+                        </td>
+                    </tr>
+                    <% end %>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="cbi-section-actions">
+            <button class="btn cbi-button cbi-button-refresh" onclick="refreshDevices()">
+                <%:Refresh%>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+    function refreshDevices() {
+        location.reload();
+    }
+
+    function blockDevice(mac, name) {
+        if (confirm('<%:Block device%> "' + name + '" (' + mac + ')?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/block")%>', {
+                'mac': mac,
+                'name': name
+            }, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    alert('<%:Device blocked successfully%>');
+                    location.reload();
+                } else {
+                    alert('<%:Failed to block device%>:' + (result.error || ''));
+                }
+            });
+        }
+    }
+
+    function limitDevice(mac, name) {
+        var download = prompt('<%:Enter download speed limit (KB/s, 0 for unlimited):%>', '0');
+        if (download === null) return;
+
+        var upload = prompt('<%:Enter upload speed limit (KB/s, 0 for unlimited):%>', '0');
+        if (upload === null) return;
+
+        new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', {
+            'mac': mac,
+            'download': download,
+            'upload': upload
+        }, function(xhr, data) {
+            var result = JSON.parse(xhr.responseText);
+            if (result.success) {
+                alert('<%:Speed limit applied%>');
+                location.reload();
+            } else {
+                alert('<%:Failed to apply speed limit%>:' + (result.error || ''));
+            }
+        });
+    }
+//]]>
+</script>
+
+<style type="text/css">
+    .label {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .label.success {
+        background-color: #46a546;
+        color: white;
+    }
+    .label.warning {
+        background-color: #f89406;
+        color: white;
+    }
+    .label.error {
+        background-color: #9d261d;
+        color: white;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+    }
+</style>
+
+<%+footer%>

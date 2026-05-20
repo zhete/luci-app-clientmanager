@@ -22,94 +22,184 @@ jobs:
 
       - name: Build IPK package
         run: |
-          # === 1. 准备文件目录 ===
-          mkdir -p data/usr/lib/lua/luci
-          mkdir -p data/www
-          mkdir -p control
-          
-          if [ -d "luasrc" ]; then
-            cp -r luasrc/* data/usr/lib/lua/luci/
-          fi
-          
-          if [ -d "root" ]; then
-            cp -r root/* data/
-          fi
-          
-          if [ -d "htdocs" ]; then
-            cp -r htdocs/* data/www/
-          fi
-          
-          # === 2. 创建 control 文件 ===
-          echo "Package: luci-app-clientmanager" > control/control
-          echo "Version: 1.0.0-1" >> control/control
-          echo "Architecture: aarch64_cortex-a53" >> control/control
-          echo "Section: luci" >> control/control
-          echo "Priority: optional" >> control/control
-          echo "Depends: libc, luci-lua-runtime" >> control/control
-          echo "Maintainer: OpenWrt Community" >> control/control
-          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> control/control
-          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> control/control
-          
-          # === 3. 创建 postinst ===
-          echo '#!/bin/sh' > control/postinst
-          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> control/postinst
-          echo 'exit 0' >> control/postinst
-          chmod 755 control/postinst
-          
-          # === 4. 修正文件权限 ===
-          find data/ -type d -exec chmod 0755 {} +
-          find data/ -type f -exec chmod 0644 {} +
-          find control/ -type d -exec chmod 0755 {} +
-          find control/ -type f -exec chmod 0644 {} +
-          chmod 755 control/postinst
-          find data/ -name "*.sh" -exec chmod 755 {} +
-          
-          # === 5. 打包 control.tar.gz 和 data.tar.gz ===
-          cd control
-          tar --owner=0 --group=0 -czf ../control.tar.gz ./*
-          cd ..
-          
-          cd data
-          tar --owner=0 --group=0 -czf ../data.tar.gz ./*
-          cd ..
-          
-          # === 6. 用 Python 手动构建 ar 归档（确保格式完全兼容 opkg） ===
           mkdir -p output
           
-          # 创建 debian-binary
-          printf '2.0\n' > debian-binary
+          python3 << 'PYEOF'
+          import os, tarfile, io, gzip, struct, time
           
-          python3 -c "
-          import os
+          PKG_NAME = "luci-app-clientmanager"
+          PKG_VER = "1.0.0-1"
+          PKG_ARCH = "aarch64_cortex-a53"
           
-          def ar_header(name, size, mtime=0):
-              name = name + '/'
-              return '{:<16}{:<12}{:<6}{:<6}{:<8}{:<10}\x60\x0a'.format(
-                  name, mtime, 0, 0, '100644', size)
+          # === 1. 构建 data.tar.gz ===
+          data_buf = io.BytesIO()
+          with tarfile.open(fileobj=data_buf, mode='w:gz', format=tarfile.GNU_FORMAT) as tar:
+              base_dirs = set()
+              
+              def add_file(path, content, mode=0o644):
+                  dirpart = os.path.dirname(path)
+                  if dirpart and dirpart not in base_dirs:
+                      for d in _parent_dirs(dirpart):
+                          if d not in base_dirs:
+                              base_dirs.add(d)
+                              info = tarfile.TarInfo(name=d)
+                              info.type = tarfile.DIRTYPE
+                              info.mode = 0o755
+                              info.uid = 0
+                              info.gid = 0
+                              info.mtime = 0
+                              tar.addfile(info)
+                  if isinstance(content, str):
+                      content = content.encode('utf-8')
+                  info = tarfile.TarInfo(name=path)
+                  info.size = len(content)
+                  info.mode = mode
+                  info.uid = 0
+                  info.gid = 0
+                  info.mtime = 0
+                  tar.addfile(info, io.BytesIO(content))
+              
+              def _parent_dirs(path):
+                  parts = path.split('/')
+                  dirs = []
+                  for i in range(1, len(parts)):
+                      dirs.append('/'.join(parts[:i]))
+                  return dirs
+              
+              def add_dir(path):
+                  if path not in base_dirs:
+                      for d in _parent_dirs(path):
+                          if d not in base_dirs:
+                              base_dirs.add(d)
+                              info = tarfile.TarInfo(name=d)
+                              info.type = tarfile.DIRTYPE
+                              info.mode = 0o755
+                              info.uid = 0
+                              info.gid = 0
+                              info.mtime = 0
+                              tar.addfile(info)
+                      base_dirs.add(path)
+                      info = tarfile.TarInfo(name=path)
+                      info.type = tarfile.DIRTYPE
+                      info.mode = 0o755
+                      info.uid = 0
+                      info.gid = 0
+                      info.mtime = 0
+                      tar.addfile(info)
+              
+              # 复制 luasrc 文件
+              luasrc_dir = 'luasrc'
+              if os.path.isdir(luasrc_dir):
+                  for root, dirs, files in os.walk(luasrc_dir):
+                      rel_dir = root[len(luasrc_dir)+1:]
+                      tar_dir = rel_dir
+                      if tar_dir:
+                          add_dir(tar_dir)
+                      for f in files:
+                          src = os.path.join(root, f)
+                          tar_path = os.path.join(rel_dir, f) if rel_dir else f
+                          with open(src, 'rb') as fh:
+                              add_file(tar_path, fh.read())
+              
+              # 复制 root 文件
+              root_dir = 'root'
+              if os.path.isdir(root_dir):
+                  for root, dirs, files in os.walk(root_dir):
+                      rel_dir = root[len(root_dir)+1:]
+                      if rel_dir:
+                          add_dir(rel_dir)
+                      for f in files:
+                          src = os.path.join(root, f)
+                          tar_path = os.path.join(rel_dir, f) if rel_dir else f
+                          is_script = f.endswith('.sh') or '/init.d/' in root or '/libexec/' in root
+                          with open(src, 'rb') as fh:
+                              add_file(tar_path, fh.read(), mode=0o755 if is_script else 0o644)
+              
+              # 复制 htdocs 文件
+              htdocs_dir = 'htdocs'
+              if os.path.isdir(htdocs_dir):
+                  for root, dirs, files in os.walk(htdocs_dir):
+                      rel_dir = root[len(htdocs_dir)+1:]
+                      tar_dir = os.path.join('www', rel_dir) if rel_dir else 'www'
+                      add_dir(tar_dir)
+                      for f in files:
+                          src = os.path.join(root, f)
+                          tar_path = os.path.join('www', rel_dir, f) if rel_dir else os.path.join('www', f)
+                          with open(src, 'rb') as fh:
+                              add_file(tar_path, fh.read())
           
-          files = ['debian-binary', 'control.tar.gz', 'data.tar.gz']
+          data_tar_gz = data_buf.getvalue()
+          print(f"data.tar.gz size: {len(data_tar_gz)}")
           
-          with open('output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk', 'wb') as out:
-              out.write(b'!<arch>\n')
-              for fname in files:
-                  data = open(fname, 'rb').read()
-                  out.write(ar_header(fname, len(data)).encode('ascii'))
-                  out.write(data)
+          # === 2. 构建 control.tar.gz ===
+          control_content = (
+              f"Package: {PKG_NAME}\n"
+              f"Version: {PKG_VER}\n"
+              f"Architecture: {PKG_ARCH}\n"
+              f"Section: luci\n"
+              f"Priority: optional\n"
+              f"Depends: libc, luci-lua-runtime\n"
+              f"Maintainer: OpenWrt Community\n"
+              f"Source: https://github.com/zhete/luci-app-clientmanager\n"
+              f"Description: Client manager for OpenWrt/ImmortalWrt\n"
+          )
+          
+          postinst_content = "#!/bin/sh\nrm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null\nexit 0\n"
+          
+          ctrl_buf = io.BytesIO()
+          with tarfile.open(fileobj=ctrl_buf, mode='w:gz', format=tarfile.GNU_FORMAT) as tar:
+              info = tarfile.TarInfo(name='./control')
+              info.size = len(control_content.encode('utf-8'))
+              info.mode = 0o644
+              info.uid = 0
+              info.gid = 0
+              info.mtime = 0
+              tar.addfile(info, io.BytesIO(control_content.encode('utf-8')))
+              
+              info = tarfile.TarInfo(name='./postinst')
+              info.size = len(postinst_content.encode('utf-8'))
+              info.mode = 0o755
+              info.uid = 0
+              info.gid = 0
+              info.mtime = 0
+              tar.addfile(info, io.BytesIO(postinst_content.encode('utf-8')))
+          
+          control_tar_gz = ctrl_buf.getvalue()
+          print(f"control.tar.gz size: {len(control_tar_gz)}")
+          
+          # === 3. debian-binary ===
+          debian_binary = b'2.0\n'
+          
+          # === 4. 构建 ar 归档 ===
+          def make_ar_header(name, size):
+              hdr = '{:<16}{:<12}{:<6}{:<6}{:<8}{:<10}`\n'.format(
+                  name + '/', 0, 0, 0, '100644', size)
+              return hdr.encode('ascii')
+          
+          ipk_path = f'output/{PKG_NAME}_{PKG_VER}_{PKG_ARCH}.ipk'
+          with open(ipk_path, 'wb') as f:
+              f.write(b'!<arch>\n')
+              for name, data in [
+                  ('debian-binary', debian_binary),
+                  ('control.tar.gz', control_tar_gz),
+                  ('data.tar.gz', data_tar_gz),
+              ]:
+                  f.write(make_ar_header(name, len(data)))
+                  f.write(data)
                   if len(data) % 2 != 0:
-                      out.write(b'\n')
-          "
+                      f.write(b'\n')
           
-          # === 7. 验证 ===
-          echo "=== Output ==="
-          ls -la output/
-          echo "=== Verify with ar ==="
-          ar t output/*.ipk || echo "ar verify failed"
-          echo "=== Verify debian-binary ==="
-          ar p output/*.ipk debian-binary || echo "extract debian-binary failed"
-          echo "=== control.tar.gz contents ==="
-          ar p output/*.ipk control.tar.gz | tar tzf -
-          echo "=== data.tar.gz (first 20) ==="
-          ar p output/*.ipk data.tar.gz | tar tzf - | head -20
+          print(f"Built: {ipk_path}")
+          print(f"Size: {os.path.getsize(ipk_path)} bytes")
+          
+          # === 5. 验证 ===
+          with open(ipk_path, 'rb') as f:
+              magic = f.read(8)
+              print(f"ar magic: {magic}")
+              assert magic == b'!<arch>\n', f"Bad ar magic: {magic}"
+          
+          print("Package built successfully!")
+          PYEOF
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4.6.2

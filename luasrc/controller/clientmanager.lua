@@ -1,10 +1,6 @@
 module("luci.controller.clientmanager", package.seeall)
 
 function index()
-	if not nixio.fs.access("/etc/config/clientmanager") then
-		return
-	end
-
 	local page = entry({"admin", "services", "clientmanager"},
 		firstchild(),
 		_("客户端管理"),

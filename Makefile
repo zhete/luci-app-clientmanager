@@ -24,11 +24,10 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
-	( . /etc/uci-defaults/luci-clientmanager ) && rm -f /etc/uci-defaults/luci-clientmanager
-	chmod +x /usr/libexec/clientmanager-*.sh 2>/dev/null
-	chmod +x /etc/init.d/clientmanager 2>/dev/null
+	if [ -f /etc/uci-defaults/luci-clientmanager ]; then
+		( . /etc/uci-defaults/luci-clientmanager ) && rm -f /etc/uci-defaults/luci-clientmanager
+	fi
 	/etc/init.d/clientmanager enable 2>/dev/null
-	/etc/init.d/clientmanager start 2>/dev/null
 fi
 exit 0
 endef

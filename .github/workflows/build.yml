@@ -20,20 +20,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install opkg-build
-        run: |
-          wget -q https://raw.githubusercontent.com/openwrt/opkg-utils/master/opkg-build -O /usr/local/bin/opkg-build
-          chmod +x /usr/local/bin/opkg-build
-
       - name: Build IPK package
         run: |
-          # === 1. 创建 opkg-build 所需的目录结构 ===
-          # opkg-build 使用 CONTROL/ 目录（不是 DEBIAN/）
+          # === 1. 准备文件目录 ===
           mkdir -p pkg/CONTROL
           mkdir -p pkg/usr/lib/lua/luci
           mkdir -p pkg/www
           
-          # === 2. 复制实际文件 ===
           if [ -d "luasrc" ]; then
             cp -r luasrc/* pkg/usr/lib/lua/luci/
           fi
@@ -46,7 +39,7 @@ jobs:
             cp -r htdocs/* pkg/www/
           fi
           
-          # === 3. 创建 CONTROL/control 文件 ===
+          # === 2. 创建 CONTROL/control ===
           echo "Package: luci-app-clientmanager" > pkg/CONTROL/control
           echo "Version: 1.0.0-1" >> pkg/CONTROL/control
           echo "Architecture: aarch64_cortex-a53" >> pkg/CONTROL/control
@@ -57,30 +50,54 @@ jobs:
           echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg/CONTROL/control
           echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg/CONTROL/control
           
-          # === 4. 创建 postinst 脚本 ===
+          # === 3. 创建 postinst ===
           echo '#!/bin/sh' > pkg/CONTROL/postinst
           echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> pkg/CONTROL/postinst
           echo 'exit 0' >> pkg/CONTROL/postinst
           chmod 755 pkg/CONTROL/postinst
           
-          # === 5. 修正文件权限 ===
-          find pkg/ -exec chmod 0644 {} +
+          # === 4. 修正文件权限 ===
           find pkg/ -type d -exec chmod 0755 {} +
+          find pkg/ -type f -exec chmod 0644 {} +
           chmod 755 pkg/CONTROL/postinst
           find pkg/ -name "*.sh" -exec chmod 755 {} +
           
-          # === 6. 使用 opkg-build 构建 .ipk ===
-          mkdir -p output
-          opkg-build -O -Z gzip pkg/ output/
+          # === 5. 手动构建 .ipk（内联 opkg-build 逻辑） ===
+          # .ipk = ar 归档，包含: debian-binary + control.tar.gz + data.tar.gz
+          # 关键：control.tar.gz 和 data.tar.gz 都必须用 gzip 压缩
           
-          # === 7. 验证 ===
-          echo "=== Output files ==="
+          WORKDIR=$(mktemp -d)
+          
+          # 5a. debian-binary
+          printf '2.0\n' > "$WORKDIR/debian-binary"
+          
+          # 5b. control.tar.gz（进入 CONTROL 目录打包，确保路径以 ./ 开头）
+          cd pkg/CONTROL
+          tar czf "$WORKDIR/control.tar.gz" --owner=0 --group=0 --numeric-owner ./control ./postinst
+          cd "$OLDPWD"
+          
+          # 5c. data.tar.gz（进入 pkg 目录打包，排除 CONTROL）
+          cd pkg
+          tar czf "$WORKDIR/data.tar.gz" --owner=0 --group=0 --numeric-owner --exclude='./CONTROL' .
+          cd "$OLDPWD"
+          
+          # 5d. 用 ar 组装（成员顺序必须是: debian-binary, control.tar.gz, data.tar.gz）
+          mkdir -p output
+          ar rcs output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk \
+            "$WORKDIR/debian-binary" \
+            "$WORKDIR/control.tar.gz" \
+            "$WORKDIR/data.tar.gz"
+          
+          rm -rf "$WORKDIR"
+          
+          # === 6. 验证 ===
+          echo "=== Output ==="
           ls -la output/
-          echo "=== ar archive contents ==="
+          echo "=== ar contents ==="
           ar t output/*.ipk
-          echo "=== control.tar.gz contents ==="
+          echo "=== control.tar.gz ==="
           ar p output/*.ipk control.tar.gz | tar tzf -
-          echo "=== data.tar.gz sample ==="
+          echo "=== data.tar.gz (first 20) ==="
           ar p output/*.ipk data.tar.gz | tar tzf - | head -20
 
       - name: Upload artifacts

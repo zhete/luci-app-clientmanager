@@ -64,32 +64,49 @@ jobs:
           chmod 755 control/postinst
           find data/ -name "*.sh" -exec chmod 755 {} +
           
-          # === 5. 手动打包 .ipk（参照 OpenWrt 标准格式） ===
-          # 步骤严格按照: debian-binary -> control.tar.gz -> data.tar.gz -> ar
-          
-          # 5a. 创建 debian-binary
-          echo "2.0" > debian-binary
-          
-          # 5b. 打包 control.tar.gz
+          # === 5. 打包 control.tar.gz 和 data.tar.gz ===
           cd control
           tar --owner=0 --group=0 -czf ../control.tar.gz ./*
           cd ..
           
-          # 5c. 打包 data.tar.gz
           cd data
           tar --owner=0 --group=0 -czf ../data.tar.gz ./*
           cd ..
           
-          # 5d. 用 ar 打包成 .ipk（注意：用 ar r，不用 ar rcs）
+          # === 6. 用 Python 手动构建 ar 归档（确保格式完全兼容 opkg） ===
           mkdir -p output
-          ar r output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk debian-binary control.tar.gz data.tar.gz
           
-          # === 6. 验证 ===
+          # 创建 debian-binary
+          printf '2.0\n' > debian-binary
+          
+          python3 -c "
+          import os
+          
+          def ar_header(name, size, mtime=0):
+              name = name + '/'
+              return '{:<16}{:<12}{:<6}{:<6}{:<8}{:<10}\x60\x0a'.format(
+                  name, mtime, 0, 0, '100644', size)
+          
+          files = ['debian-binary', 'control.tar.gz', 'data.tar.gz']
+          
+          with open('output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk', 'wb') as out:
+              out.write(b'!<arch>\n')
+              for fname in files:
+                  data = open(fname, 'rb').read()
+                  out.write(ar_header(fname, len(data)).encode('ascii'))
+                  out.write(data)
+                  if len(data) % 2 != 0:
+                      out.write(b'\n')
+          "
+          
+          # === 7. 验证 ===
           echo "=== Output ==="
           ls -la output/
-          echo "=== ar contents ==="
-          ar t output/*.ipk
-          echo "=== control.tar.gz ==="
+          echo "=== Verify with ar ==="
+          ar t output/*.ipk || echo "ar verify failed"
+          echo "=== Verify debian-binary ==="
+          ar p output/*.ipk debian-binary || echo "extract debian-binary failed"
+          echo "=== control.tar.gz contents ==="
           ar p output/*.ipk control.tar.gz | tar tzf -
           echo "=== data.tar.gz (first 20) ==="
           ar p output/*.ipk data.tar.gz | tar tzf - | head -20

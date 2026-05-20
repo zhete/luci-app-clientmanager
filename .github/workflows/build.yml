@@ -25,7 +25,7 @@ jobs:
           mkdir -p output
           
           python3 << 'PYEOF'
-          import os, tarfile, io, gzip, struct, time
+          import os, tarfile, io
           
           PKG_NAME = "luci-app-clientmanager"
           PKG_VER = "1.0.0-1"
@@ -33,22 +33,33 @@ jobs:
           
           # === 1. 构建 data.tar.gz ===
           data_buf = io.BytesIO()
-          with tarfile.open(fileobj=data_buf, mode='w:gz', format=tarfile.GNU_FORMAT) as tar:
-              base_dirs = set()
+          with tarfile.open(fileobj=data_buf, mode='w:gz', format=tarfile.USTAR_FORMAT) as tar:
+              # 使用 set 避免重复添加目录
+              added_dirs = set()
+              
+              def ensure_parent_dirs(path):
+                  """确保父目录存在"""
+                  parts = path.rsplit('/', 1)
+                  if len(parts) > 1:
+                      parent = parts[0]
+                      if parent not in added_dirs:
+                          # 递归创建所有父目录
+                          parent_parts = parent.split('/')
+                          for i in range(len(parent_parts)):
+                              dir_path = '/'.join(parent_parts[:i+1])
+                              if dir_path and dir_path not in added_dirs:
+                                  info = tarfile.TarInfo(name=dir_path)
+                                  info.type = tarfile.DIRTYPE
+                                  info.mode = 0o755
+                                  info.uid = 0
+                                  info.gid = 0
+                                  info.mtime = 0
+                                  tar.addfile(info)
+                                  added_dirs.add(dir_path)
               
               def add_file(path, content, mode=0o644):
-                  dirpart = os.path.dirname(path)
-                  if dirpart and dirpart not in base_dirs:
-                      for d in _parent_dirs(dirpart):
-                          if d not in base_dirs:
-                              base_dirs.add(d)
-                              info = tarfile.TarInfo(name=d)
-                              info.type = tarfile.DIRTYPE
-                              info.mode = 0o755
-                              info.uid = 0
-                              info.gid = 0
-                              info.mtime = 0
-                              tar.addfile(info)
+                  """添加文件到 tar"""
+                  ensure_parent_dirs(path)
                   if isinstance(content, str):
                       content = content.encode('utf-8')
                   info = tarfile.TarInfo(name=path)
@@ -59,72 +70,35 @@ jobs:
                   info.mtime = 0
                   tar.addfile(info, io.BytesIO(content))
               
-              def _parent_dirs(path):
-                  parts = path.split('/')
-                  dirs = []
-                  for i in range(1, len(parts)):
-                      dirs.append('/'.join(parts[:i]))
-                  return dirs
-              
-              def add_dir(path):
-                  if path not in base_dirs:
-                      for d in _parent_dirs(path):
-                          if d not in base_dirs:
-                              base_dirs.add(d)
-                              info = tarfile.TarInfo(name=d)
-                              info.type = tarfile.DIRTYPE
-                              info.mode = 0o755
-                              info.uid = 0
-                              info.gid = 0
-                              info.mtime = 0
-                              tar.addfile(info)
-                      base_dirs.add(path)
-                      info = tarfile.TarInfo(name=path)
-                      info.type = tarfile.DIRTYPE
-                      info.mode = 0o755
-                      info.uid = 0
-                      info.gid = 0
-                      info.mtime = 0
-                      tar.addfile(info)
-              
-              # 复制 luasrc 文件
-              luasrc_dir = 'luasrc'
-              if os.path.isdir(luasrc_dir):
-                  for root, dirs, files in os.walk(luasrc_dir):
-                      rel_dir = root[len(luasrc_dir)+1:]
-                      tar_dir = rel_dir
-                      if tar_dir:
-                          add_dir(tar_dir)
+              # 复制 luasrc -> /usr/lib/lua/luci
+              if os.path.isdir('luasrc'):
+                  for root, dirs, files in os.walk('luasrc'):
+                      rel_path = root[len('luasrc/'):].lstrip('/')
                       for f in files:
                           src = os.path.join(root, f)
-                          tar_path = os.path.join(rel_dir, f) if rel_dir else f
+                          tar_path = os.path.join('usr/lib/lua/luci', rel_path, f) if rel_path else os.path.join('usr/lib/lua/luci', f)
                           with open(src, 'rb') as fh:
                               add_file(tar_path, fh.read())
               
-              # 复制 root 文件
-              root_dir = 'root'
-              if os.path.isdir(root_dir):
-                  for root, dirs, files in os.walk(root_dir):
-                      rel_dir = root[len(root_dir)+1:]
-                      if rel_dir:
-                          add_dir(rel_dir)
+              # 复制 root -> /
+              if os.path.isdir('root'):
+                  for root, dirs, files in os.walk('root'):
+                      rel_path = root[len('root/'):].lstrip('/')
                       for f in files:
                           src = os.path.join(root, f)
-                          tar_path = os.path.join(rel_dir, f) if rel_dir else f
+                          tar_path = os.path.join(rel_path, f) if rel_path else f
+                          # 判断是否为脚本
                           is_script = f.endswith('.sh') or '/init.d/' in root or '/libexec/' in root
                           with open(src, 'rb') as fh:
                               add_file(tar_path, fh.read(), mode=0o755 if is_script else 0o644)
               
-              # 复制 htdocs 文件
-              htdocs_dir = 'htdocs'
-              if os.path.isdir(htdocs_dir):
-                  for root, dirs, files in os.walk(htdocs_dir):
-                      rel_dir = root[len(htdocs_dir)+1:]
-                      tar_dir = os.path.join('www', rel_dir) if rel_dir else 'www'
-                      add_dir(tar_dir)
+              # 复制 htdocs -> /www
+              if os.path.isdir('htdocs'):
+                  for root, dirs, files in os.walk('htdocs'):
+                      rel_path = root[len('htdocs/'):].lstrip('/')
                       for f in files:
                           src = os.path.join(root, f)
-                          tar_path = os.path.join('www', rel_dir, f) if rel_dir else os.path.join('www', f)
+                          tar_path = os.path.join('www', rel_path, f) if rel_path else os.path.join('www', f)
                           with open(src, 'rb') as fh:
                               add_file(tar_path, fh.read())
           
@@ -147,8 +121,9 @@ jobs:
           postinst_content = "#!/bin/sh\nrm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null\nexit 0\n"
           
           ctrl_buf = io.BytesIO()
-          with tarfile.open(fileobj=ctrl_buf, mode='w:gz', format=tarfile.GNU_FORMAT) as tar:
-              info = tarfile.TarInfo(name='./control')
+          with tarfile.open(fileobj=ctrl_buf, mode='w:gz', format=tarfile.USTAR_FORMAT) as tar:
+              # control 文件
+              info = tarfile.TarInfo(name='control')
               info.size = len(control_content.encode('utf-8'))
               info.mode = 0o644
               info.uid = 0
@@ -156,7 +131,8 @@ jobs:
               info.mtime = 0
               tar.addfile(info, io.BytesIO(control_content.encode('utf-8')))
               
-              info = tarfile.TarInfo(name='./postinst')
+              # postinst 脚本
+              info = tarfile.TarInfo(name='postinst')
               info.size = len(postinst_content.encode('utf-8'))
               info.mode = 0o755
               info.uid = 0
@@ -170,15 +146,22 @@ jobs:
           # === 3. debian-binary ===
           debian_binary = b'2.0\n'
           
-          # === 4. 构建 ar 归档 ===
+          # === 4. 构建 ar 归档（BSD 格式） ===
           def make_ar_header(name, size):
-              hdr = '{:<16}{:<12}{:<6}{:<6}{:<8}{:<10}`\n'.format(
-                  name + '/', 0, 0, 0, '100644', size)
-              return hdr.encode('ascii')
+              """创建 BSD ar 格式的头部"""
+              # BSD ar 格式: "#1/<name_len>" 或直接文件名
+              # 这里使用简单格式：文件名后跟空格填充到 16 字节
+              name_field = name.ljust(16)[:16]  # 左对齐，填充空格，截断到 16 字节
+              # 格式: name(16) + mtime(12) + uid(6) + gid(6) + mode(8) + size(10) + magic(2)
+              header = f"{name_field}{0:12d}{0:6d}{0:6d}{100644:8o}{size:10d}`\n"
+              return header.encode('ascii')
           
           ipk_path = f'output/{PKG_NAME}_{PKG_VER}_{PKG_ARCH}.ipk'
           with open(ipk_path, 'wb') as f:
+              # ar 文件魔数
               f.write(b'!<arch>\n')
+              
+              # 按顺序写入三个文件
               for name, data in [
                   ('debian-binary', debian_binary),
                   ('control.tar.gz', control_tar_gz),
@@ -186,6 +169,7 @@ jobs:
               ]:
                   f.write(make_ar_header(name, len(data)))
                   f.write(data)
+                  # ar 格式要求每个文件内容对齐到 2 字节
                   if len(data) % 2 != 0:
                       f.write(b'\n')
           

@@ -20,45 +20,65 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prepare build
+      - name: Build IPK package
         run: |
-          mkdir -p pkg_build/usr/lib/lua/luci
-          mkdir -p pkg_build/www
-          mkdir -p pkg_build/CONTROL
+          # === 1. 准备 data 目录（实际安装的文件） ===
+          mkdir -p data/usr/lib/lua/luci
+          mkdir -p data/www
           
           if [ -d "luasrc" ]; then
-            cp -r luasrc/* pkg_build/usr/lib/lua/luci/
+            cp -r luasrc/* data/usr/lib/lua/luci/
           fi
           
           if [ -d "root" ]; then
-            cp -r root/* pkg_build/
+            cp -r root/* data/
           fi
           
           if [ -d "htdocs" ]; then
-            cp -r htdocs/* pkg_build/www/
+            cp -r htdocs/* data/www/
           fi
           
-          echo "Package: luci-app-clientmanager" > pkg_build/CONTROL/control
-          echo "Version: 1.0.0-1" >> pkg_build/CONTROL/control
-          echo "Architecture: aarch64_cortex-a53" >> pkg_build/CONTROL/control
-          echo "Section: luci" >> pkg_build/CONTROL/control
-          echo "Priority: optional" >> pkg_build/CONTROL/control
-          echo "Maintainer: OpenWrt Community" >> pkg_build/CONTROL/control
-          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg_build/CONTROL/control
-          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg_build/CONTROL/control
+          # === 2. 准备 control 目录（包元信息） ===
+          mkdir -p control
           
-          echo "#!/bin/sh" > pkg_build/CONTROL/postinst
-          echo '[ "$1" = "configure" ] || exit 0' >> pkg_build/CONTROL/postinst
-          echo "rm -f /tmp/luci-indexcache 2>/dev/null" >> pkg_build/CONTROL/postinst
-          echo "exit 0" >> pkg_build/CONTROL/postinst
-          chmod +x pkg_build/CONTROL/postinst
+          echo "Package: luci-app-clientmanager" > control/control
+          echo "Version: 1.0.0-1" >> control/control
+          echo "Depends: libc, luci-lua-runtime" >> control/control
+          echo "Architecture: aarch64_cortex-a53" >> control/control
+          echo "Section: luci" >> control/control
+          echo "Priority: optional" >> control/control
+          echo "Maintainer: OpenWrt Community" >> control/control
+          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> control/control
+          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> control/control
           
-          mkdir -p output
+          echo "#!/bin/sh" > control/postinst
+          echo 'rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null' >> control/postinst
+          chmod +x control/postinst
           
-          cd pkg_build
-          tar czf ../output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk --owner=0 --group=0 --numeric-owner .
+          # === 3. 打包为标准 .ipk 格式（ar 归档） ===
+          # .ipk = ar 归档，内含 debian-binary + control.tar.gz + data.tar.gz
+          
+          # 3a. 创建 debian-binary
+          printf '2.0\n' > debian-binary
+          
+          # 3b. 打包 control.tar.gz
+          cd control
+          tar czf ../control.tar.gz --owner=0 --group=0 --numeric-owner ./control ./postinst
           cd ..
           
+          # 3c. 打包 data.tar.gz
+          cd data
+          tar czf ../data.tar.gz --owner=0 --group=0 --numeric-owner .
+          cd ..
+          
+          # 3d. 用 ar 组装 .ipk
+          mkdir -p output
+          ar r output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk debian-binary control.tar.gz data.tar.gz
+          
+          # === 4. 验证 ===
+          echo "=== IPK contents ==="
+          ar t output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk
+          echo "=== File size ==="
           ls -la output/
 
       - name: Upload artifacts

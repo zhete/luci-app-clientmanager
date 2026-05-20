@@ -35,8 +35,8 @@ jobs:
             openwrt_target: x86-64
             gcc_ver: 12.3.0
           - target: aarch64_generic
-            openwrt_path: armvirt/64
-            openwrt_target: armvirt-64
+            openwrt_path: armsr/armv8
+            openwrt_target: armsr-armv8
             gcc_ver: 12.3.0
           - target: ramips-mt7621
             openwrt_path: ramips/mt7621

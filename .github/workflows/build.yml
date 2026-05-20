@@ -15,16 +15,22 @@ jobs:
     strategy:
       matrix:
         include:
-          # ImmortalWrt 23.05 for aarch64_cortex-a53
-          - sdk_url: https://downloads.immortalwrt.org/releases/23.05.4/targets/qualcommax/ipq60xx/immortalwrt-sdk-qualcommax-ipq60xx_gcc-12.3.0_musl.Linux-x86_64.tar.zst
+          # ImmortalWrt 24.10.6 for aarch64_cortex-a53 (ipq807x)
+          - sdk_url: https://downloads.immortalwrt.org/releases/24.10.6/targets/qualcommax/ipq807x/immortalwrt-sdk-24.10.6-qualcommax-ipq807x_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             arch: aarch64_cortex-a53
-            name: ImmortalWrt-23.05.4-qualcommax-ipq60xx
+            name: ImmortalWrt-24.10.6-qualcommax-ipq807x
     
     name: Build for ${{ matrix.name }}
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses-dev libncurses5-dev zlib1g-dev \
+            gawk git gettext libssl-dev xsltproc rsync wget unzip python3
 
       - name: Download and extract SDK
         run: |

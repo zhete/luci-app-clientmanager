@@ -65,6 +65,9 @@ msgstr "阻断"
 msgid "Unblock"
 msgstr "解除阻断"
 
+msgid "Allow"
+msgstr "允许"
+
 msgid "Limit"
 msgstr "限速"
 
@@ -128,11 +131,29 @@ msgstr "全局设置"
 msgid "Enable Client Manager"
 msgstr "启用客户端管理"
 
+msgid "Access control mode"
+msgstr "访问控制模式"
+
+msgid "Blacklist (block listed devices)"
+msgstr "黑名单（阻断列表中的设备）"
+
+msgid "Whitelist (allow only listed devices)"
+msgstr "白名单（仅允许列表中的设备）"
+
+msgid "Blacklist blocks specified devices; Whitelist only allows specified devices"
+msgstr "黑名单阻断指定设备；白名单仅允许指定设备访问"
+
 msgid "Auto-block new devices"
 msgstr "自动阻断新设备"
 
 msgid "Automatically block new devices connecting to the network"
 msgstr "自动阻断连接到网络的新设备"
+
+msgid "Alert on new device"
+msgstr "新设备告警"
+
+msgid "Show alert when a new device connects to the network"
+msgstr "当新设备连接到网络时显示告警"
 
 msgid "Enable traffic monitoring"
 msgstr "启用流量监控"
@@ -173,6 +194,78 @@ msgstr "设备被阻断时通知"
 msgid "Notification email"
 msgstr "通知邮箱"
 
+msgid "Scheduled Blocking"
+msgstr "定时阻断"
+
+msgid "Configure time-based access control for devices"
+msgstr "配置基于时间的设备访问控制"
+
+msgid "Action"
+msgstr "动作"
+
+msgid "Mon Start"
+msgstr "周一开始"
+
+msgid "Mon End"
+msgstr "周一期束"
+
+msgid "Tue Start"
+msgstr "周二开始"
+
+msgid "Tue End"
+msgstr "周二结束"
+
+msgid "Wed Start"
+msgstr "周三开始"
+
+msgid "Wed End"
+msgstr "周三结束"
+
+msgid "Thu Start"
+msgstr "周四开始"
+
+msgid "Thu End"
+msgstr "周四结束"
+
+msgid "Fri Start"
+msgstr "周五开始"
+
+msgid "Fri End"
+msgstr "周五结束"
+
+msgid "Sat Start"
+msgstr "周六开始"
+
+msgid "Sat End"
+msgstr "周六结束"
+
+msgid "Sun Start"
+msgstr "周日开始"
+
+msgid "Sun End"
+msgstr "周日结束"
+
+msgid "Mon"
+msgstr "周一"
+
+msgid "Tue"
+msgstr "周二"
+
+msgid "Wed"
+msgstr "周三"
+
+msgid "Thu"
+msgstr "周四"
+
+msgid "Fri"
+msgstr "周五"
+
+msgid "Sat"
+msgstr "周六"
+
+msgid "Sun"
+msgstr "周日"
+
 msgid "Device Aliases"
 msgstr "设备别名"
 
@@ -206,6 +299,39 @@ msgstr "虚拟设备"
 msgid "Manage device access and speed limits"
 msgstr "管理设备访问和速度限制"
 
+msgid "Access Control Mode"
+msgstr "访问控制模式"
+
+msgid "Whitelist Mode"
+msgstr "白名单模式"
+
+msgid "Only allowed devices can access the network. All other devices are blocked."
+msgstr "仅允许列表中的设备访问网络，其他设备将被阻断。"
+
+msgid "Blacklist Mode"
+msgstr "黑名单模式"
+
+msgid "All devices can access the network except blocked ones."
+msgstr "除被阻断的设备外，所有设备均可访问网络。"
+
+msgid "Allowed Devices"
+msgstr "允许的设备"
+
+msgid "Allowed"
+msgstr "已允许"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Remove device from allowed list"
+msgstr "从允许列表中移除设备"
+
+msgid "Failed to remove device"
+msgstr "移除设备失败"
+
+msgid "No allowed devices"
+msgstr "没有允许的设备"
+
 msgid "Blocked Devices"
 msgstr "已阻断设备"
 
@@ -230,6 +356,18 @@ msgstr "没有已阻断的设备"
 msgid "No speed limited devices"
 msgstr "没有限速设备"
 
+msgid "No scheduled rules"
+msgstr "没有定时规则"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete schedule for"
+msgstr "删除定时规则："
+
+msgid "Failed to delete schedule"
+msgstr "删除定时规则失败"
+
 msgid "View traffic usage statistics for all devices"
 msgstr "查看所有设备的流量使用统计"
 
@@ -253,6 +391,9 @@ msgstr "合计"
 
 msgid "Last Seen"
 msgstr "最后出现"
+
+msgid "Online Hours"
+msgstr "在线时长"
 
 msgid "Reset Statistics"
 msgstr "重置统计"

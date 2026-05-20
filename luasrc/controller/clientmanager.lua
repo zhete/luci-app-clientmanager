@@ -1,8 +1,3 @@
---[[
-Client Manager Controller
-Handles routing and page logic for the client management plugin
-]]--
-
 module("luci.controller.clientmanager", package.seeall)
 
 function index()
@@ -60,6 +55,15 @@ function index()
 
 	entry({"admin", "network", "clientmanager", "api", "alias"},
 		call("api_set_alias"))
+
+	entry({"admin", "network", "clientmanager", "api", "schedule"},
+		call("api_schedule"))
+
+	entry({"admin", "network", "clientmanager", "api", "history"},
+		call("api_connection_history"))
+
+	entry({"admin", "network", "clientmanager", "api", "realtime"},
+		call("api_realtime_speed"))
 end
 
 function action_overview()
@@ -73,7 +77,10 @@ end
 function action_control()
 	local uci = require("luci.model.uci").cursor()
 	local blocked_devices = uci:get_list("clientmanager", "global", "blocked") or {}
+	local allowed_devices = uci:get_list("clientmanager", "global", "allowed") or {}
+	local mode = uci:get("clientmanager", "global", "mode") or "blacklist"
 	local limited_devices = {}
+	local scheduled_devices = {}
 
 	uci:foreach("clientmanager", "limit", function(s)
 		if s.mac and s.mac ~= "" then
@@ -84,9 +91,29 @@ function action_control()
 		end
 	end)
 
+	uci:foreach("clientmanager", "schedule", function(s)
+		if s.mac and s.mac ~= "" then
+			table.insert(scheduled_devices, {
+				mac = s.mac,
+				name = s.name or s.mac,
+				action = s.action or "block",
+				mon = format_schedule_range(s.mon_start, s.mon_end),
+				tue = format_schedule_range(s.tue_start, s.tue_end),
+				wed = format_schedule_range(s.wed_start, s.wed_end),
+				thu = format_schedule_range(s.thu_start, s.thu_end),
+				fri = format_schedule_range(s.fri_start, s.fri_end),
+				sat = format_schedule_range(s.sat_start, s.sat_end),
+				sun = format_schedule_range(s.sun_start, s.sun_end),
+			})
+		end
+	end)
+
 	luci.template.render("clientmanager/control", {
 		blocked_devices = blocked_devices,
-		limited_devices = limited_devices
+		allowed_devices = allowed_devices,
+		limited_devices = limited_devices,
+		scheduled_devices = scheduled_devices,
+		mode = mode
 	})
 end
 
@@ -95,6 +122,13 @@ function action_statistics()
 	luci.template.render("clientmanager/statistics", {
 		statistics = stats
 	})
+end
+
+function format_schedule_range(start_time, end_time)
+	if not start_time or start_time == "" then
+		return "-"
+	end
+	return (start_time or "?") .. "-" .. (end_time or "?")
 end
 
 function api_devices()
@@ -124,15 +158,7 @@ function api_block_device()
 	local success = (result:find("successfully") ~= nil)
 
 	if success then
-		local uci = require("luci.model.uci").cursor()
-		if name and name ~= "Unknown" then
-			uci:foreach("clientmanager", "device", function(s)
-				if s.mac and s.mac:lower() == mac:lower() then
-					uci:set("clientmanager", s[".name"], "name", name)
-				end
-			end)
-			uci:commit("clientmanager")
-		end
+		log_event("block", mac, name)
 	end
 
 	http.write_json({
@@ -155,6 +181,10 @@ function api_unblock_device()
 	local sys = require("luci.sys")
 	local result = sys.exec("/usr/libexec/clientmanager-block.sh %s unblock 2>&1" % { mac_quote(mac) })
 	local success = (result:find("successfully") ~= nil)
+
+	if success then
+		log_event("unblock", mac, "")
+	end
 
 	http.write_json({
 		success = success,
@@ -228,16 +258,17 @@ function api_export_traffic()
 	else
 		http.prepare_content("text/csv")
 		http.header("Content-Disposition", 'attachment; filename="traffic_stats.csv"')
-		http.write("Device Name,MAC Address,IP Address,Download (bytes),Upload (bytes),Total (bytes),Last Seen\n")
+		http.write("Device Name,MAC Address,IP Address,Download (bytes),Upload (bytes),Total (bytes),Online Hours,Last Seen\n")
 		if stats and stats.devices then
 			for _, dev in ipairs(stats.devices) do
-				http.write(string.format('%s,%s,%s,%d,%d,%d,%s\n',
+				http.write(string.format('%s,%s,%s,%d,%d,%d,%.1f,%s\n',
 					dev.hostname or "Unknown",
 					dev.mac or "",
 					dev.ip or "",
 					tonumber(dev.download) or 0,
 					tonumber(dev.upload) or 0,
 					(tonumber(dev.download) or 0) + (tonumber(dev.upload) or 0),
+					tonumber(dev.online_hours) or 0,
 					dev.last_seen or ""
 				))
 			end
@@ -281,10 +312,126 @@ function api_set_alias()
 	})
 end
 
+function api_schedule()
+	local http = require("luci.http")
+	http.prepare_content("application/json")
+
+	local action_type = http.formvalue("action_type")
+
+	if action_type == "add" then
+		local mac = http.formvalue("mac")
+		local name = http.formvalue("name") or ""
+		local sched_action = http.formvalue("sched_action") or "block"
+		local days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+
+		if not mac or not validate_mac(mac) then
+			http.write_json({ success = false, error = "Invalid MAC address" })
+			return
+		end
+
+		local uci = require("luci.model.uci").cursor()
+		local section = uci:add("clientmanager", "schedule")
+		uci:set("clientmanager", section, "mac", mac:lower())
+		uci:set("clientmanager", section, "name", name)
+		uci:set("clientmanager", section, "action", sched_action)
+
+		for _, day in ipairs(days) do
+			local start_val = http.formvalue(day .. "_start") or ""
+			local end_val = http.formvalue(day .. "_end") or ""
+			if start_val ~= "" then
+				uci:set("clientmanager", section, day .. "_start", start_val)
+			end
+			if end_val ~= "" then
+				uci:set("clientmanager", section, day .. "_end", end_val)
+			end
+		end
+
+		uci:commit("clientmanager")
+		http.write_json({ success = true, message = "Schedule added" })
+
+	elseif action_type == "delete" then
+		local mac = http.formvalue("mac")
+		if not mac then
+			http.write_json({ success = false, error = "MAC required" })
+			return
+		end
+
+		local uci = require("luci.model.uci").cursor()
+		uci:foreach("clientmanager", "schedule", function(s)
+			if s.mac and s.mac:lower() == mac:lower() then
+				uci:delete("clientmanager", s[".name"])
+			end
+		end)
+		uci:commit("clientmanager")
+		http.write_json({ success = true, message = "Schedule removed" })
+
+	else
+		local uci = require("luci.model.uci").cursor()
+		local schedules = {}
+		uci:foreach("clientmanager", "schedule", function(s)
+			if s.mac and s.mac ~= "" then
+				table.insert(schedules, {
+					mac = s.mac,
+					name = s.name or s.mac,
+					action = s.action or "block",
+					mon = format_schedule_range(s.mon_start, s.mon_end),
+					tue = format_schedule_range(s.tue_start, s.tue_end),
+					wed = format_schedule_range(s.wed_start, s.wed_end),
+					thu = format_schedule_range(s.thu_start, s.thu_end),
+					fri = format_schedule_range(s.fri_start, s.fri_end),
+					sat = format_schedule_range(s.sat_start, s.sat_end),
+					sun = format_schedule_range(s.sun_start, s.sun_end),
+				})
+			end
+		end)
+		http.write_json({ success = true, schedules = schedules })
+	end
+end
+
+function api_connection_history()
+	local http = require("luci.http")
+	http.prepare_content("application/json")
+
+	local mac = http.formvalue("mac")
+	local limit = tonumber(http.formvalue("limit")) or 50
+
+	local history = read_connection_history(mac, limit)
+
+	http.write_json({
+		success = true,
+		history = history
+	})
+end
+
+function api_realtime_speed()
+	local http = require("luci.http")
+	http.prepare_content("application/json")
+
+	local sys = require("luci.sys")
+	local result = sys.exec("/usr/libexec/clientmanager-traffic.sh realtime 2>/dev/null") or ""
+
+	local devices = {}
+	if result ~= "" then
+		local json = require("luci.jsonc")
+		local data = json.parse(result)
+		if data and data.devices then
+			devices = data.devices
+		end
+	end
+
+	http.write_json({
+		success = true,
+		devices = devices,
+		timestamp = os.time()
+	})
+end
+
 function get_connected_devices()
 	local devices = {}
 	local sys = require("luci.sys")
 	local uci = require("luci.model.uci").cursor()
+
+	local mode = uci:get("clientmanager", "global", "mode") or "blacklist"
 
 	local leases_file = sys.exec("cat /tmp/dhcp.leases 2>/dev/null") or ""
 	local dhcp_leases = {}
@@ -315,6 +462,14 @@ function get_connected_devices()
 		end
 	end
 
+	local allowed_set = {}
+	local allowed_list = uci:get_list("clientmanager", "global", "allowed") or {}
+	for _, amac in ipairs(allowed_list) do
+		if amac and amac ~= "" then
+			allowed_set[amac:lower()] = true
+		end
+	end
+
 	local arp_table = sys.exec("cat /proc/net/arp 2>/dev/null") or ""
 
 	for line in arp_table:gmatch("[^\r\n]+") do
@@ -338,6 +493,15 @@ function get_connected_devices()
 
 			local display_name = aliases[mac_lower] or hostname or "Unknown"
 
+			local is_blocked = false
+			if mode == "whitelist" then
+				is_blocked = not allowed_set[mac_lower]
+			else
+				is_blocked = blocked_set[mac_lower] or false
+			end
+
+			local online_hours = get_online_hours(mac_lower)
+
 			table.insert(devices, {
 				mac = mac_lower,
 				ip = ip,
@@ -345,9 +509,11 @@ function get_connected_devices()
 				vendor = vendor,
 				interface = device or "br-lan",
 				online = is_online,
-				blocked = blocked_set[mac_lower] or false,
+				blocked = is_blocked,
 				last_seen = dhcp_info.expires and os.date("%Y-%m-%d %H:%M:%S", dhcp_info.expires) or "Unknown",
-				type = guess_device_type(vendor, hostname or "")
+				type = guess_device_type(vendor, hostname or ""),
+				online_hours = online_hours,
+				mode = mode
 			})
 		end
 	end
@@ -366,9 +532,8 @@ function get_connected_devices()
 end
 
 function get_vendor_by_oui(oui)
-	local nixio = require("nixio")
 	local db_path = "/usr/share/clientmanager/oui.txt"
-	local fs = nixio.fs
+	local fs = require("nixio").fs
 
 	if not fs.access(db_path) then
 		return nil
@@ -402,43 +567,27 @@ function guess_device_type(vendor, hostname)
 	if h:match("iphone") or h:match("android") or h:match("galaxy") or h:match("pixel") or h:match("huawei%-") or h:match("redmi") then
 		return "Mobile"
 	end
-
 	if h:match("ipad") or h:match("tablet") then
 		return "Tablet"
 	end
-
 	if h:match("tv") or h:match("roku") or h:match("chromecast") or h:match("fire%-tv") then
 		return "Smart TV"
 	end
-
 	if h:match("echo") or h:match("home") or h:match("nest") or h:match("ring") or h:match("smart") then
 		return "IoT Device"
 	end
-
-	if v:match("router") or v:match("mikrotik") or v:match("ubiquiti") or v:match("tp%-link") or v:match("netgear") or v:match("asus") then
+	if v:match("mikrotik") or v:match("ubiquiti") or v:match("tp%-link") or v:match("netgear") or v:match("asus") then
 		return "Router"
 	end
-
 	if h:match("playstation") or h:match("xbox") or h:match("nintendo") or h:match("switch") then
 		return "Game Console"
 	end
-
 	if v:match("apple") and not h:match("tv") then
 		return "Mobile"
 	end
-
-	if v:match("samsung") then
+	if v:match("samsung") or v:match("huawei") or v:match("xiaomi") then
 		return "Mobile"
 	end
-
-	if v:match("huawei") then
-		return "Mobile"
-	end
-
-	if v:match("xiaomi") then
-		return "Mobile"
-	end
-
 	if v:match("vmware") or v:match("virtual") then
 		return "Virtual"
 	end
@@ -462,6 +611,85 @@ function get_traffic_statistics()
 	end
 
 	return data
+end
+
+function get_online_hours(mac)
+	local sys = require("luci.sys")
+	local history_file = "/etc/clientmanager/online.db"
+
+	if not nixio.fs.access(history_file) then
+		return 0
+	end
+
+	local total_seconds = 0
+	local f = io.open(history_file, "r")
+	if not f then return 0 end
+
+	for line in f:lines() do
+		local entry_mac, start_ts, end_ts = line:match("^(%S+)|(%d+)|(%d+)$")
+		if entry_mac and entry_mac:lower() == mac:lower() and start_ts and end_ts then
+			total_seconds = total_seconds + (tonumber(end_ts) - tonumber(start_ts))
+		end
+	end
+
+	f:close()
+	return math.floor(total_seconds / 3600 * 10 + 0.5) / 10
+end
+
+function log_event(event_type, mac, name)
+	local log_dir = "/etc/clientmanager"
+	local log_file = log_dir .. "/events.log"
+
+	require("nixio").fs.mkdir(log_dir)
+
+	local f = io.open(log_file, "a")
+	if f then
+		f:write(string.format("%s|%s|%s|%s\n",
+			os.date("%Y-%m-%d %H:%M:%S"),
+			event_type,
+			mac or "",
+			name or ""))
+		f:close()
+	end
+end
+
+function read_connection_history(mac, limit)
+	local sys = require("luci.sys")
+	local history = {}
+	local history_file = "/etc/clientmanager/events.log"
+
+	if not nixio.fs.access(history_file) then
+		return history
+	end
+
+	limit = limit or 50
+
+	local f = io.open(history_file, "r")
+	if not f then return history end
+
+	local lines = {}
+	for line in f:lines() do
+		table.insert(lines, line)
+	end
+	f:close()
+
+	local start_idx = math.max(1, #lines - limit + 1)
+	for i = start_idx, #lines do
+		local line = lines[i]
+		local timestamp, event, entry_mac, name = line:match("^(%S+ %S+)|(%S+)|(%S+)|(.*)$")
+		if timestamp then
+			if not mac or (entry_mac and entry_mac:lower() == mac:lower()) then
+				table.insert(history, {
+					timestamp = timestamp,
+					event = event,
+					mac = entry_mac or "",
+					name = name or ""
+				})
+			end
+		end
+	end
+
+	return history
 end
 
 function validate_mac(mac)

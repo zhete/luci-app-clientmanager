@@ -1,0 +1,208 @@
+name: Build OpenWrt Package
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWrt SDK version'
+        required: true
+        default: '23.05.5'
+        type: string
+      target:
+        description: 'Target architecture (e.g. x86-64, aarch64_generic, ramips-mt7621)'
+        required: true
+        default: 'x86-64'
+        type: string
+
+env:
+  OPENWRT_VERSION: ${{ github.event.inputs.openwrt_version || '23.05.5' }}
+  TARGET: ${{ github.event.inputs.target || 'x86-64' }}
+  PKG_NAME: luci-app-clientmanager
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86-64
+            sdk_name: x86_64
+          - target: aarch64_generic
+            sdk_name: aarch64_generic
+          - target: ramips-mt7621
+            sdk_name: mipsel_24kc
+
+    name: Build for ${{ matrix.target }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine OpenWrt version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.openwrt_version }}"
+            TARGET="${{ github.event.inputs.target }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+            TARGET="${{ matrix.target }}"
+          else
+            VERSION="23.05.5"
+            TARGET="${{ matrix.target }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          SDK_URL="https://downloads.immortalwrt.org/releases/${VERSION}/targets/${TARGET}/immortalwrt-sdk-${VERSION}-${TARGET//\//-}_gcc-13.3.0_musl.Linux-x86_64.tar.xz"
+          echo "sdk_url=$SDK_URL" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION, target: $TARGET"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            g++ \
+            gawk \
+            gcc-multilib \
+            g++-multilib \
+            gettext \
+            git \
+            libncurses5-dev \
+            libssl-dev \
+            python3-distutils \
+            python3-setuptools \
+            rsync \
+            swig \
+            unzip \
+            zlib1g-dev \
+            file \
+            wget \
+            xsltproc
+
+      - name: Download OpenWrt SDK
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TARGET="${{ steps.version.outputs.target }}"
+          
+          SDK_FILE="openwrt-sdk-${VERSION}-${TARGET//\//-}_gcc-13.3.0_musl.Linux-x86_64.tar.xz"
+          
+          OPENWRT_URL="https://downloads.openwrt.org/releases/${VERSION}/targets/${TARGET}/${SDK_FILE}"
+          IMMORTALWRT_URL="https://downloads.immortalwrt.org/releases/${VERSION}/targets/${TARGET}/immortalwrt-sdk-${VERSION}-${TARGET//\//-}_gcc-13.3.0_musl.Linux-x86_64.tar.xz"
+          
+          echo "Trying OpenWrt official: $OPENWRT_URL"
+          wget -q --show-progress --tries=3 "$OPENWRT_URL" -O sdk.tar.xz || {
+            echo "OpenWrt official failed, trying ImmortalWrt: $IMMORTALWRT_URL"
+            wget -q --show-progress --tries=3 "$IMMORTALWRT_URL" -O sdk.tar.xz || {
+              echo "Both sources failed, trying alternative mirror..."
+              wget -q --show-progress --tries=3 "https://mirror.ghproxy.com/${OPENWRT_URL}" -O sdk.tar.xz || {
+                echo "Failed to download SDK"
+                exit 1
+              }
+            }
+          }
+
+      - name: Extract SDK
+        run: |
+          tar -xf sdk.tar.xz
+          SDK_DIR=$(find . -maxdepth 1 -type d -name "*sdk*" | head -1)
+          echo "SDK_DIR=$SDK_DIR" >> $GITHUB_ENV
+          echo "SDK directory: $SDK_DIR"
+          ls -la "$SDK_DIR"
+
+      - name: Prepare package source
+        run: |
+          SDK_DIR="${{ env.SDK_DIR }}"
+          PKG_DIR="${SDK_DIR}/package/${{ env.PKG_NAME }}"
+          mkdir -p "$PKG_DIR"
+          
+          cp -r Makefile "$PKG_DIR/"
+          cp -r luasrc "$PKG_DIR/"
+          cp -r root "$PKG_DIR/"
+          cp -r po "$PKG_DIR/"
+          
+          if [ -d htdocs ]; then
+            cp -r htdocs "$PKG_DIR/"
+          fi
+          
+          echo "Package directory contents:"
+          find "$PKG_DIR" -type f | head -30
+
+      - name: Build package
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          make package/${{ env.PKG_NAME }}/compile V=s
+
+      - name: Find IPK files
+        id: find_ipk
+        run: |
+          SDK_DIR="${{ env.SDK_DIR }}"
+          IPK_FILES=$(find "$SDK_DIR/bin" -name "*.ipk" -type f 2>/dev/null || true)
+          
+          if [ -z "$IPK_FILES" ]; then
+            IPK_FILES=$(find "$SDK_DIR" -name "${{ env.PKG_NAME }}*.ipk" -type f 2>/dev/null || true)
+          fi
+          
+          echo "Found IPK files:"
+          echo "$IPK_FILES"
+          
+          mkdir -p output
+          for f in $IPK_FILES; do
+            cp "$f" output/
+            echo "Copied: $(basename $f)"
+          done
+          
+          ls -la output/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}-${{ steps.version.outputs.version }}-${{ matrix.target }}
+          path: output/*.ipk
+          retention-days: 90
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f -name "*.ipk" | sort
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.ipk
+          generate_release_notes: true
+          body: |
+            ## luci-app-clientmanager ${{ github.ref_name }}
+            
+            ### Installation
+            ```bash
+            opkg install luci-app-clientmanager_*.ipk
+            ```
+            
+            ### Supported architectures
+            - x86-64
+            - aarch64_generic
+            - ramips-mt7621

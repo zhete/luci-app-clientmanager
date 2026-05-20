@@ -7,6 +7,59 @@
     </div>
 
     <div class="cbi-section">
+        <h3><%:Access Control Mode%></h3>
+        <div class="mode-info">
+            <% if mode == "whitelist" then %>
+                <span class="label info"><%:Whitelist Mode%></span>
+                <p><%:Only allowed devices can access the network. All other devices are blocked.%></p>
+            <% else %>
+                <span class="label warning"><%:Blacklist Mode%></span>
+                <p><%:All devices can access the network except blocked ones.%></p>
+            <% end %>
+        </div>
+    </div>
+
+    <% if mode == "whitelist" then %>
+    <div class="cbi-section">
+        <h3><%:Allowed Devices%></h3>
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="allowed-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:Status%></th>
+                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                    </tr>
+                </thead>
+                <tbody id="allowed-list">
+                    <% local has_allowed = false %>
+                    <% for _, mac in ipairs(allowed_devices) do %>
+                        <% if mac and mac ~= "" then %>
+                            <% has_allowed = true %>
+                    <tr class="cbi-section-table-row">
+                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell">
+                            <span class="label success"><%:Allowed%></span>
+                        </td>
+                        <td class="cbi-section-table-cell">
+                            <button class="btn cbi-button cbi-button-negative" onclick="disallowDevice('<%=pcdata(mac)%>')">
+                                <%:Remove%>
+                            </button>
+                        </td>
+                    </tr>
+                    <%  end
+                    end %>
+                    <% if not has_allowed then %>
+                    <tr class="cbi-section-table-row">
+                        <td colspan="3" class="cbi-section-table-cell" style="text-align:center;"><%:No allowed devices%></td>
+                    </tr>
+                    <% end %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% else %>
+    <div class="cbi-section">
         <h3><%:Blocked Devices%></h3>
         <div class="table-wrapper">
             <table class="cbi-section-table" id="blocked-table">
@@ -44,6 +97,7 @@
             </table>
         </div>
     </div>
+    <% end %>
 
     <div class="cbi-section">
         <h3><%:Speed Limited Devices%></h3>
@@ -95,6 +149,59 @@
             </table>
         </div>
     </div>
+
+    <div class="cbi-section">
+        <h3><%:Scheduled Blocking%></h3>
+        <div class="table-wrapper">
+            <table class="cbi-section-table" id="schedule-table">
+                <thead>
+                    <tr class="cbi-section-table-titles">
+                        <th class="cbi-section-table-cell"><%:Device%></th>
+                        <th class="cbi-section-table-cell"><%:Action%></th>
+                        <th class="cbi-section-table-cell"><%:Mon%></th>
+                        <th class="cbi-section-table-cell"><%:Tue%></th>
+                        <th class="cbi-section-table-cell"><%:Wed%></th>
+                        <th class="cbi-section-table-cell"><%:Thu%></th>
+                        <th class="cbi-section-table-cell"><%:Fri%></th>
+                        <th class="cbi-section-table-cell"><%:Sat%></th>
+                        <th class="cbi-section-table-cell"><%:Sun%></th>
+                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-list">
+                    <% if #scheduled_devices == 0 then %>
+                    <tr class="cbi-section-table-row">
+                        <td colspan="10" class="cbi-section-table-cell" style="text-align:center;"><%:No scheduled rules%></td>
+                    </tr>
+                    <% end %>
+                    <% for _, sched in ipairs(scheduled_devices) do %>
+                    <tr class="cbi-section-table-row">
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.name)%></td>
+                        <td class="cbi-section-table-cell">
+                            <% if sched.action == "block" then %>
+                                <span class="label error"><%:Block%></span>
+                            <% else %>
+                                <span class="label success"><%:Allow%></span>
+                            <% end %>
+                        </td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.mon)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.tue)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.wed)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.thu)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.fri)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.sat)%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(sched.sun)%></td>
+                        <td class="cbi-section-table-cell">
+                            <button class="btn cbi-button cbi-button-negative" onclick="deleteSchedule('<%=pcdata(sched.mac)%>')">
+                                <%:Delete%>
+                            </button>
+                        </td>
+                    </tr>
+                    <% end %>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -110,6 +217,21 @@
                     location.reload();
                 } else {
                     alert('<%:Failed to unblock device%>: ' + (result.error || ''));
+                }
+            });
+        }
+    }
+
+    function disallowDevice(mac) {
+        if (confirm('<%:Remove device from allowed list%> ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', {
+                'mac': mac
+            }, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('<%:Failed to remove device%>: ' + (result.error || ''));
                 }
             });
         }
@@ -132,6 +254,22 @@
             });
         }
     }
+
+    function deleteSchedule(mac) {
+        if (confirm('<%:Delete schedule for%> ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/schedule")%>', {
+                'action_type': 'delete',
+                'mac': mac
+            }, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('<%:Failed to delete schedule%>: ' + (result.error || ''));
+                }
+            });
+        }
+    }
 //]]>
 </script>
 
@@ -146,6 +284,7 @@
     .label.success { background-color: #46a546; color: white; }
     .label.warning { background-color: #f89406; color: white; }
     .label.error { background-color: #9d261d; color: white; }
+    .label.info { background-color: #3a87ad; color: white; }
     .table-wrapper { overflow-x: auto; }
     .cbi-section { margin-bottom: 20px; }
     .cbi-section h3 {
@@ -153,6 +292,7 @@
         padding-bottom: 5px;
         border-bottom: 1px solid #ddd;
     }
+    .mode-info p { margin: 8px 0 0; color: #555; font-size: 13px; }
 </style>
 
 <%+footer%>

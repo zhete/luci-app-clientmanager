@@ -6,8 +6,6 @@ config global 'global'
 	option data_retention '30'
 	option scan_interval '60'
 	option new_device_alert '0'
-	list blocked ''
-	list allowed ''
 
 config notification 'notification'
 	option enabled '0'

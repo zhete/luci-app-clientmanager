@@ -7,126 +7,64 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-    inputs:
-      immortalwrt_version:
-        description: 'ImmortalWrt SDK version (branch tag)'
-        required: true
-        default: 'main'
-        type: string
-      target:
-        description: 'Target architecture (qualcommax/ipq60xx)'
-        required: true
-        default: 'qualcommax-ipq60xx'
-        type: string
-
-env:
-  IMMORTALWRT_VERSION: ${{ github.event.inputs.immortalwrt_version || 'main' }}
-  PKG_NAME: luci-app-clientmanager
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: qualcommax-ipq60xx
-            arch: aarch64_cortex-a53
-
-    name: Build for ${{ matrix.target }}
-
+    
+    name: Build for qualcommax-ipq60xx
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Prepare package
+      - name: Prepare build
         run: |
-          mkdir -p build_pkg/${{ env.PKG_NAME }}
+          mkdir -p pkg_build/usr/lib/lua/luci
+          mkdir -p pkg_build/www
+          mkdir -p pkg_build/CONTROL
           
-          cp -r Makefile build_pkg/
-          cp -r luasrc build_pkg/
-          cp -r root build_pkg/
-          cp -r po build_pkg/ 2>/dev/null || true
-          
-          if [ -d htdocs ]; then
-            cp -r htdocs build_pkg/
+          if [ -d "luasrc" ]; then
+            cp -r luasrc/* pkg_build/usr/lib/lua/luci/
           fi
           
-          mkdir -p build_pkg/CONTROL
+          if [ -d "root" ]; then
+            cp -r root/* pkg_build/
+          fi
           
-          PKG_VERSION=$(grep -oP 'PKG_VERSION:=\K[^ ]+' Makefile || echo "1.0.0")
-          PKG_RELEASE=$(grep -oP 'PKG_RELEASE:=\K[^ ]+' Makefile || echo "1")
+          if [ -d "htdocs" ]; then
+            cp -r htdocs/* pkg_build/www/
+          fi
           
-          # 不使用 << EOF，改为单独写入每一行
-          echo "Package: ${{ env.PKG_NAME }}" > build_pkg/CONTROL/control
-          echo "Version: $PKG_VERSION-$PKG_RELEASE" >> build_pkg/CONTROL/control
-          echo "Architecture: ${{ matrix.arch }}" >> build_pkg/CONTROL/control
-          echo "Section: luci" >> build_pkg/CONTROL/control
-          echo "Priority: optional" >> build_pkg/CONTROL/control
-          echo "Maintainer: OpenWrt Community" >> build_pkg/CONTROL/control
-          echo "Source: ${{ github.server_url }}/${{ github.repository }}" >> build_pkg/CONTROL/control
-          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> build_pkg/CONTROL/control
+          echo "Package: luci-app-clientmanager" > pkg_build/CONTROL/control
+          echo "Version: 1.0.0-1" >> pkg_build/CONTROL/control
+          echo "Architecture: aarch64_cortex-a53" >> pkg_build/CONTROL/control
+          echo "Section: luci" >> pkg_build/CONTROL/control
+          echo "Priority: optional" >> pkg_build/CONTROL/control
+          echo "Maintainer: OpenWrt Community" >> pkg_build/CONTROL/control
+          echo "Source: https://github.com/zhete/luci-app-clientmanager" >> pkg_build/CONTROL/control
+          echo "Description: Client manager for OpenWrt/ImmortalWrt" >> pkg_build/CONTROL/control
           
-          echo "Package prepared successfully"
-          ls -la build_pkg/
-
-      - name: Build IPK package
-        run: |
+          echo "#!/bin/sh" > pkg_build/CONTROL/postinst
+          echo '[ "$1" = "configure" ] || exit 0' >> pkg_build/CONTROL/postinst
+          echo "rm -f /tmp/luci-indexcache 2>/dev/null" >> pkg_build/CONTROL/postinst
+          echo "exit 0" >> pkg_build/CONTROL/postinst
+          chmod +x pkg_build/CONTROL/postinst
+          
           mkdir -p output
           
-          PKG_DIR=tmp_pkg
-          mkdir -p $PKG_DIR
+          cd pkg_build
+          tar czf ../output/luci-app-clientmanager_1.0.0-1_aarch64_cortex-a53.ipk --owner=0 --group=0 --numeric-owner .
+          cd ..
           
-          if [ -d build_pkg/root ]; then
-            cp -r build_pkg/root/* $PKG_DIR/
-          fi
-          
-          if [ -d build_pkg/luasrc ]; then
-            mkdir -p $PKG_DIR/usr/lib/lua/luci
-            cp -r build_pkg/luasrc/* $PKG_DIR/usr/lib/lua/luci/
-          fi
-          
-          if [ -d build_pkg/htdocs ]; then
-            mkdir -p $PKG_DIR/www
-            cp -r build_pkg/htdocs/* $PKG_DIR/www/
-          fi
-          
-          if [ -d build_pkg/po ]; then
-            for lang in $(ls build_pkg/po/ 2>/dev/null); do
-              if [ -d "build_pkg/po/$lang" ]; then
-                mkdir -p $PKG_DIR/usr/lib/lua/luci/i18n
-                for pofile in build_pkg/po/$lang/*.po 2>/dev/null; do
-                  if [ -f "$pofile" ]; then
-                    mo_file=$(basename $pofile .po).lmo
-                    if command -v po2lmo >/dev/null 2>&1; then
-                      po2lmo $pofile $PKG_DIR/usr/lib/lua/luci/i18n/$mo_file
-                    else
-                      echo "Warning: po2lmo not found, skipping translation file $pofile"
-                    fi
-                  fi
-                done
-              fi
-            done
-          fi
-          
-          cp -r build_pkg/CONTROL $PKG_DIR/
-          
-          PKG_VERSION=$(grep -oP 'PKG_VERSION:=\K[^ ]+' Makefile || echo "1.0.0")
-          PKG_RELEASE=$(grep -oP 'PKG_RELEASE:=\K[^ ]+' Makefile || echo "1")
-          
-          IPK_NAME="${{ env.PKG_NAME }}_${PKG_VERSION}-${PKG_RELEASE}_${{ matrix.arch }}.ipk"
-          
-          cd $PKG_DIR && tar -czf ../output/$IPK_NAME --owner=0 --group=0 *
-          
-          echo "Package built: $IPK_NAME"
           ls -la output/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PKG_NAME }}-${{ matrix.target }}
+          name: luci-app-clientmanager-qualcommax-ipq60xx
           path: output/*.ipk
           retention-days: 90
 
@@ -143,21 +81,8 @@ jobs:
         with:
           path: artifacts
 
-      - name: List artifacts
-        run: find artifacts -type f -name "*.ipk" | sort
-
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
           files: artifacts/**/*.ipk
           generate_release_notes: true
-          body: |
-            ## luci-app-clientmanager ${{ github.ref_name }}
-            
-            ### Installation
-            ```bash
-            opkg install luci-app-clientmanager_*.ipk
-            ```
-            
-            ### Supported architectures
-            - qualcommax-ipq60xx (Link NN6000V2)

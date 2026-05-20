@@ -95,7 +95,7 @@ jobs:
           ar p output/*.ipk data.tar.gz | tar tzf - | head -20
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: luci-app-clientmanager-qualcommax-ipq60xx
           path: output/*.ipk
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           path: artifacts
 

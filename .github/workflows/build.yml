@@ -12,183 +12,88 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    name: Build for qualcommax-ipq60xx
+    strategy:
+      matrix:
+        include:
+          # ImmortalWrt 23.05 for aarch64_cortex-a53
+          - sdk_url: https://downloads.immortalwrt.org/releases/23.05.4/targets/qualcommax/ipq60xx/immortalwrt-sdk-qualcommax-ipq60xx_gcc-12.3.0_musl.Linux-x86_64.tar.zst
+            arch: aarch64_cortex-a53
+            name: ImmortalWrt-23.05.4-qualcommax-ipq60xx
+    
+    name: Build for ${{ matrix.name }}
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
-      - name: Build IPK package
+      - name: Download and extract SDK
         run: |
+          wget -q ${{ matrix.sdk_url }} -O sdk.tar.zst
+          zstd -d sdk.tar.zst
+          tar -xf sdk.tar
+          # 重命名 SDK 目录
+          mv immortalwrt-sdk-* sdk
+          echo "SDK_DIR=$(pwd)/sdk" >> $GITHUB_ENV
+
+      - name: Prepare package
+        run: |
+          # 创建 package 目录
+          mkdir -p $SDK_DIR/package/luci-app-clientmanager
+          
+          # 复制项目文件
+          cp -r Makefile $SDK_DIR/package/luci-app-clientmanager/
+          cp -r luasrc $SDK_DIR/package/luci-app-clientmanager/
+          cp -r root $SDK_DIR/package/luci-app-clientmanager/
+          cp -r po $SDK_DIR/package/luci-app-clientmanager/
+          
+          # 如果有 htdocs 目录也复制
+          if [ -d "htdocs" ]; then
+            cp -r htdocs $SDK_DIR/package/luci-app-clientmanager/
+          fi
+
+      - name: Build package
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          # 更新 feeds
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+          # 配置 - 启用我们的包
+          echo "CONFIG_PACKAGE_luci-app-clientmanager=y" >> .config
+          echo "CONFIG_ALL=y" >> .config
+          make defconfig
+          
+          # 编译包
+          make package/luci-app-clientmanager/compile V=s -j$(nproc) || make package/luci-app-clientmanager/compile V=s
+
+      - name: Find and copy IPK
+        run: |
+          # 查找生成的 ipk 文件
+          IPK_FILE=$(find $SDK_DIR/bin -name "luci-app-clientmanager*.ipk" | head -1)
+          
+          if [ -z "$IPK_FILE" ]; then
+            echo "Error: No IPK file found"
+            exit 1
+          fi
+          
+          echo "Found IPK: $IPK_FILE"
+          
+          # 创建输出目录
           mkdir -p output
           
-          python3 << 'PYEOF'
-          import os, tarfile, io
+          # 复制 ipk 文件，使用标准命名
+          cp "$IPK_FILE" output/
           
-          PKG_NAME = "luci-app-clientmanager"
-          PKG_VER = "1.0.0-1"
-          PKG_ARCH = "aarch64_cortex-a53"
+          # 显示文件信息
+          ls -lh output/
           
-          # === 1. 构建 data.tar.gz ===
-          data_buf = io.BytesIO()
-          with tarfile.open(fileobj=data_buf, mode='w:gz', format=tarfile.USTAR_FORMAT) as tar:
-              # 使用 set 避免重复添加目录
-              added_dirs = set()
-              
-              def ensure_parent_dirs(path):
-                  """确保父目录存在"""
-                  parts = path.rsplit('/', 1)
-                  if len(parts) > 1:
-                      parent = parts[0]
-                      if parent not in added_dirs:
-                          # 递归创建所有父目录
-                          parent_parts = parent.split('/')
-                          for i in range(len(parent_parts)):
-                              dir_path = '/'.join(parent_parts[:i+1])
-                              if dir_path and dir_path not in added_dirs:
-                                  info = tarfile.TarInfo(name=dir_path)
-                                  info.type = tarfile.DIRTYPE
-                                  info.mode = 0o755
-                                  info.uid = 0
-                                  info.gid = 0
-                                  info.mtime = 0
-                                  tar.addfile(info)
-                                  added_dirs.add(dir_path)
-              
-              def add_file(path, content, mode=0o644):
-                  """添加文件到 tar"""
-                  ensure_parent_dirs(path)
-                  if isinstance(content, str):
-                      content = content.encode('utf-8')
-                  info = tarfile.TarInfo(name=path)
-                  info.size = len(content)
-                  info.mode = mode
-                  info.uid = 0
-                  info.gid = 0
-                  info.mtime = 0
-                  tar.addfile(info, io.BytesIO(content))
-              
-              # 复制 luasrc -> /usr/lib/lua/luci
-              if os.path.isdir('luasrc'):
-                  for root, dirs, files in os.walk('luasrc'):
-                      rel_path = root[len('luasrc/'):].lstrip('/')
-                      for f in files:
-                          src = os.path.join(root, f)
-                          tar_path = os.path.join('usr/lib/lua/luci', rel_path, f) if rel_path else os.path.join('usr/lib/lua/luci', f)
-                          with open(src, 'rb') as fh:
-                              add_file(tar_path, fh.read())
-              
-              # 复制 root -> /
-              if os.path.isdir('root'):
-                  for root, dirs, files in os.walk('root'):
-                      rel_path = root[len('root/'):].lstrip('/')
-                      for f in files:
-                          src = os.path.join(root, f)
-                          tar_path = os.path.join(rel_path, f) if rel_path else f
-                          # 判断是否为脚本
-                          is_script = f.endswith('.sh') or '/init.d/' in root or '/libexec/' in root
-                          with open(src, 'rb') as fh:
-                              add_file(tar_path, fh.read(), mode=0o755 if is_script else 0o644)
-              
-              # 复制 htdocs -> /www
-              if os.path.isdir('htdocs'):
-                  for root, dirs, files in os.walk('htdocs'):
-                      rel_path = root[len('htdocs/'):].lstrip('/')
-                      for f in files:
-                          src = os.path.join(root, f)
-                          tar_path = os.path.join('www', rel_path, f) if rel_path else os.path.join('www', f)
-                          with open(src, 'rb') as fh:
-                              add_file(tar_path, fh.read())
-          
-          data_tar_gz = data_buf.getvalue()
-          print(f"data.tar.gz size: {len(data_tar_gz)}")
-          
-          # === 2. 构建 control.tar.gz ===
-          control_content = (
-              f"Package: {PKG_NAME}\n"
-              f"Version: {PKG_VER}\n"
-              f"Architecture: {PKG_ARCH}\n"
-              f"Section: luci\n"
-              f"Priority: optional\n"
-              f"Depends: libc, luci-lua-runtime\n"
-              f"Maintainer: OpenWrt Community\n"
-              f"Source: https://github.com/zhete/luci-app-clientmanager\n"
-              f"Description: Client manager for OpenWrt/ImmortalWrt\n"
-          )
-          
-          postinst_content = "#!/bin/sh\nrm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null\nexit 0\n"
-          
-          ctrl_buf = io.BytesIO()
-          with tarfile.open(fileobj=ctrl_buf, mode='w:gz', format=tarfile.USTAR_FORMAT) as tar:
-              # control 文件
-              info = tarfile.TarInfo(name='control')
-              info.size = len(control_content.encode('utf-8'))
-              info.mode = 0o644
-              info.uid = 0
-              info.gid = 0
-              info.mtime = 0
-              tar.addfile(info, io.BytesIO(control_content.encode('utf-8')))
-              
-              # postinst 脚本
-              info = tarfile.TarInfo(name='postinst')
-              info.size = len(postinst_content.encode('utf-8'))
-              info.mode = 0o755
-              info.uid = 0
-              info.gid = 0
-              info.mtime = 0
-              tar.addfile(info, io.BytesIO(postinst_content.encode('utf-8')))
-          
-          control_tar_gz = ctrl_buf.getvalue()
-          print(f"control.tar.gz size: {len(control_tar_gz)}")
-          
-          # === 3. debian-binary ===
-          debian_binary = b'2.0\n'
-          
-          # === 4. 构建 ar 归档（BSD 格式） ===
-          def make_ar_header(name, size):
-              """创建 BSD ar 格式的头部"""
-              # BSD ar 格式: "#1/<name_len>" 或直接文件名
-              # 这里使用简单格式：文件名后跟空格填充到 16 字节
-              name_field = name.ljust(16)[:16]  # 左对齐，填充空格，截断到 16 字节
-              # 格式: name(16) + mtime(12) + uid(6) + gid(6) + mode(8) + size(10) + magic(2)
-              header = f"{name_field}{0:12d}{0:6d}{0:6d}{100644:8o}{size:10d}`\n"
-              return header.encode('ascii')
-          
-          ipk_path = f'output/{PKG_NAME}_{PKG_VER}_{PKG_ARCH}.ipk'
-          with open(ipk_path, 'wb') as f:
-              # ar 文件魔数
-              f.write(b'!<arch>\n')
-              
-              # 按顺序写入三个文件
-              for name, data in [
-                  ('debian-binary', debian_binary),
-                  ('control.tar.gz', control_tar_gz),
-                  ('data.tar.gz', data_tar_gz),
-              ]:
-                  f.write(make_ar_header(name, len(data)))
-                  f.write(data)
-                  # ar 格式要求每个文件内容对齐到 2 字节
-                  if len(data) % 2 != 0:
-                      f.write(b'\n')
-          
-          print(f"Built: {ipk_path}")
-          print(f"Size: {os.path.getsize(ipk_path)} bytes")
-          
-          # === 5. 验证 ===
-          with open(ipk_path, 'rb') as f:
-              magic = f.read(8)
-              print(f"ar magic: {magic}")
-              assert magic == b'!<arch>\n', f"Bad ar magic: {magic}"
-          
-          print("Package built successfully!")
-          PYEOF
+          # 验证 ipk 文件
+          file output/*.ipk
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
-          name: luci-app-clientmanager-qualcommax-ipq60xx
+          name: ${{ matrix.name }}
           path: output/*.ipk
           retention-days: 90
 
@@ -201,12 +106,12 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4.3.0
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Create release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*.ipk
           generate_release_notes: true

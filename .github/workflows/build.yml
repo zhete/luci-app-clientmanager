@@ -82,8 +82,9 @@ jobs:
             git \
             libncurses5-dev \
             libssl-dev \
-            python3-distutils \
             python3-setuptools \
+            python3-jinja2 \
+            python3-yaml \
             rsync \
             swig \
             unzip \

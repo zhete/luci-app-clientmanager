@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# 清除 LuCI 缓存
+rm -f /tmp/luci-indexcache
+rm -rf /tmp/luci-modulecache/*
+
+# 确保配置文件存在
+[ -f /etc/config/clientmanager ] || {
+	touch /etc/config/clientmanager
+}
+
+# 确保数据目录存在
+mkdir -p /etc/clientmanager
+
+# 设置正确的权限
+chmod 755 /usr/libexec/clientmanager-*.sh 2>/dev/null
+chmod 755 /etc/init.d/clientmanager 2>/dev/null
+
+exit 0

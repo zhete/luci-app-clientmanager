@@ -13,30 +13,6 @@ config notification 'notification'
 	option device_blocked '1'
 	option email ''
 
-config schedule
-	option mac ''
-	option name ''
-	option action 'block'
-	option mon_start ''
-	option mon_end ''
-	option tue_start ''
-	option tue_end ''
-	option wed_start ''
-	option thu_start ''
-	option fri_start ''
-	option sat_start ''
-	option sun_start ''
-
-config limit
-	option mac ''
-	option download '0'
-	option upload '0'
-
-config device
-	option mac ''
-	option alias ''
-	option name ''
-
 config firewall 'firewall'
 	option name 'clientmanager'
 	option include_path '/usr/libexec/clientmanager-firewall.sh'

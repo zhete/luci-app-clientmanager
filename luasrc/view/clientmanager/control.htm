@@ -1,57 +1,51 @@
 <%+header%>
 
 <div class="cbi-map">
-    <h2><%:Access Control%></h2>
-    <div class="cbi-section-descr">
-        <%:Manage device access and speed limits%>
-    </div>
+    <h2 name="content">访问控制</h2>
+    <div class="cbi-section-descr">管理设备访问权限和速度限制</div>
 
     <div class="cbi-section">
-        <h3><%:Access Control Mode%></h3>
-        <div class="mode-info">
+        <h3 class="cm-section-title">控制模式</h3>
+        <div class="cm-mode-info">
             <% if mode == "whitelist" then %>
-                <span class="label info"><%:Whitelist Mode%></span>
-                <p><%:Only allowed devices can access the network. All other devices are blocked.%></p>
+                <span class="cm-badge cm-badge-blue">白名单模式</span>
+                <p class="cm-mode-desc">仅允许列表中的设备访问网络，其他设备将被阻断</p>
             <% else %>
-                <span class="label warning"><%:Blacklist Mode%></span>
-                <p><%:All devices can access the network except blocked ones.%></p>
+                <span class="cm-badge cm-badge-orange">黑名单模式</span>
+                <p class="cm-mode-desc">除被阻断的设备外，所有设备均可访问网络</p>
             <% end %>
         </div>
     </div>
 
     <% if mode == "whitelist" then %>
     <div class="cbi-section">
-        <h3><%:Allowed Devices%></h3>
-        <div class="table-wrapper">
-            <table class="cbi-section-table" id="allowed-table">
+        <h3 class="cm-section-title">允许的设备</h3>
+        <div class="cm-table-wrap">
+            <table class="cbi-section-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
-                        <th class="cbi-section-table-cell"><%:Status%></th>
-                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                        <th class="cbi-section-table-cell">MAC地址</th>
+                        <th class="cbi-section-table-cell">状态</th>
+                        <th class="cbi-section-table-cell">操作</th>
                     </tr>
                 </thead>
-                <tbody id="allowed-list">
+                <tbody>
                     <% local has_allowed = false %>
                     <% for _, mac in ipairs(allowed_devices) do %>
                         <% if mac and mac ~= "" then %>
                             <% has_allowed = true %>
                     <tr class="cbi-section-table-row">
-                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell cm-mac"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell"><span class="cm-badge cm-badge-green">已允许</span></td>
                         <td class="cbi-section-table-cell">
-                            <span class="label success"><%:Allowed%></span>
-                        </td>
-                        <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-negative" onclick="disallowDevice('<%=pcdata(mac)%>')">
-                                <%:Remove%>
-                            </button>
+                            <button class="btn cbi-button cbi-button-negative cm-btn-sm" onclick="disallowDevice('<%=pcdata(mac)%>')">移除</button>
                         </td>
                     </tr>
                     <%  end
                     end %>
                     <% if not has_allowed then %>
                     <tr class="cbi-section-table-row">
-                        <td colspan="3" class="cbi-section-table-cell" style="text-align:center;"><%:No allowed devices%></td>
+                        <td colspan="3" class="cbi-section-table-cell cm-empty">暂无允许的设备</td>
                     </tr>
                     <% end %>
                 </tbody>
@@ -60,37 +54,33 @@
     </div>
     <% else %>
     <div class="cbi-section">
-        <h3><%:Blocked Devices%></h3>
-        <div class="table-wrapper">
-            <table class="cbi-section-table" id="blocked-table">
+        <h3 class="cm-section-title">已阻断设备</h3>
+        <div class="cm-table-wrap">
+            <table class="cbi-section-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
-                        <th class="cbi-section-table-cell"><%:Status%></th>
-                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                        <th class="cbi-section-table-cell">MAC地址</th>
+                        <th class="cbi-section-table-cell">状态</th>
+                        <th class="cbi-section-table-cell">操作</th>
                     </tr>
                 </thead>
-                <tbody id="blocked-list">
+                <tbody>
                     <% local has_blocked = false %>
                     <% for _, mac in ipairs(blocked_devices) do %>
                         <% if mac and mac ~= "" then %>
                             <% has_blocked = true %>
                     <tr class="cbi-section-table-row">
-                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell cm-mac"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell"><span class="cm-badge cm-badge-red">已阻断</span></td>
                         <td class="cbi-section-table-cell">
-                            <span class="label error"><%:Blocked%></span>
-                        </td>
-                        <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-positive" onclick="unblockDevice('<%=pcdata(mac)%>')">
-                                <%:Unblock%>
-                            </button>
+                            <button class="btn cbi-button cbi-button-positive cm-btn-sm" onclick="unblockDevice('<%=pcdata(mac)%>')">解除阻断</button>
                         </td>
                     </tr>
                     <%  end
                     end %>
                     <% if not has_blocked then %>
                     <tr class="cbi-section-table-row">
-                        <td colspan="3" class="cbi-section-table-cell" style="text-align:center;"><%:No blocked devices%></td>
+                        <td colspan="3" class="cbi-section-table-cell cm-empty">暂无已阻断设备</td>
                     </tr>
                     <% end %>
                 </tbody>
@@ -100,49 +90,47 @@
     <% end %>
 
     <div class="cbi-section">
-        <h3><%:Speed Limited Devices%></h3>
-        <div class="table-wrapper">
-            <table class="cbi-section-table" id="limited-table">
+        <h3 class="cm-section-title">限速设备</h3>
+        <div class="cm-table-wrap">
+            <table class="cbi-section-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
-                        <th class="cbi-section-table-cell"><%:Download Limit%></th>
-                        <th class="cbi-section-table-cell"><%:Upload Limit%></th>
-                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                        <th class="cbi-section-table-cell">MAC地址</th>
+                        <th class="cbi-section-table-cell">下载限制</th>
+                        <th class="cbi-section-table-cell">上传限制</th>
+                        <th class="cbi-section-table-cell">操作</th>
                     </tr>
                 </thead>
-                <tbody id="limited-list">
+                <tbody>
                     <% local has_limited = false %>
                     <% for mac, limits in pairs(limited_devices) do %>
                         <% if mac and mac ~= "" then %>
                             <% has_limited = true %>
                     <tr class="cbi-section-table-row">
-                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
+                        <td class="cbi-section-table-cell cm-mac"><%=pcdata(mac)%></td>
                         <td class="cbi-section-table-cell">
                             <% if limits.download ~= "0" then %>
-                                <%=pcdata(limits.download)%> kbps
+                                <span class="cm-badge cm-badge-orange"><%=pcdata(limits.download)%> kbps</span>
                             <% else %>
-                                <%:Unlimited%>
+                                <span class="cm-badge cm-badge-green">无限制</span>
                             <% end %>
                         </td>
                         <td class="cbi-section-table-cell">
                             <% if limits.upload ~= "0" then %>
-                                <%=pcdata(limits.upload)%> kbps
+                                <span class="cm-badge cm-badge-orange"><%=pcdata(limits.upload)%> kbps</span>
                             <% else %>
-                                <%:Unlimited%>
+                                <span class="cm-badge cm-badge-green">无限制</span>
                             <% end %>
                         </td>
                         <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-negative" onclick="removeLimit('<%=pcdata(mac)%>')">
-                                <%:Remove Limit%>
-                            </button>
+                            <button class="btn cbi-button cbi-button-negative cm-btn-sm" onclick="removeLimit('<%=pcdata(mac)%>')">移除限速</button>
                         </td>
                     </tr>
                     <%  end
                     end %>
                     <% if not has_limited then %>
                     <tr class="cbi-section-table-row">
-                        <td colspan="4" class="cbi-section-table-cell" style="text-align:center;"><%:No speed limited devices%></td>
+                        <td colspan="4" class="cbi-section-table-cell cm-empty">暂无限速设备</td>
                     </tr>
                     <% end %>
                 </tbody>
@@ -151,27 +139,27 @@
     </div>
 
     <div class="cbi-section">
-        <h3><%:Scheduled Blocking%></h3>
-        <div class="table-wrapper">
-            <table class="cbi-section-table" id="schedule-table">
+        <h3 class="cm-section-title">定时阻断规则</h3>
+        <div class="cm-table-wrap">
+            <table class="cbi-section-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell"><%:Device%></th>
-                        <th class="cbi-section-table-cell"><%:Action%></th>
-                        <th class="cbi-section-table-cell"><%:Mon%></th>
-                        <th class="cbi-section-table-cell"><%:Tue%></th>
-                        <th class="cbi-section-table-cell"><%:Wed%></th>
-                        <th class="cbi-section-table-cell"><%:Thu%></th>
-                        <th class="cbi-section-table-cell"><%:Fri%></th>
-                        <th class="cbi-section-table-cell"><%:Sat%></th>
-                        <th class="cbi-section-table-cell"><%:Sun%></th>
-                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                        <th class="cbi-section-table-cell">设备</th>
+                        <th class="cbi-section-table-cell">动作</th>
+                        <th class="cbi-section-table-cell">周一</th>
+                        <th class="cbi-section-table-cell">周二</th>
+                        <th class="cbi-section-table-cell">周三</th>
+                        <th class="cbi-section-table-cell">周四</th>
+                        <th class="cbi-section-table-cell">周五</th>
+                        <th class="cbi-section-table-cell">周六</th>
+                        <th class="cbi-section-table-cell">周日</th>
+                        <th class="cbi-section-table-cell">操作</th>
                     </tr>
                 </thead>
-                <tbody id="schedule-list">
+                <tbody>
                     <% if #scheduled_devices == 0 then %>
                     <tr class="cbi-section-table-row">
-                        <td colspan="10" class="cbi-section-table-cell" style="text-align:center;"><%:No scheduled rules%></td>
+                        <td colspan="10" class="cbi-section-table-cell cm-empty">暂无定时规则</td>
                     </tr>
                     <% end %>
                     <% for _, sched in ipairs(scheduled_devices) do %>
@@ -179,9 +167,9 @@
                         <td class="cbi-section-table-cell"><%=pcdata(sched.name)%></td>
                         <td class="cbi-section-table-cell">
                             <% if sched.action == "block" then %>
-                                <span class="label error"><%:Block%></span>
+                                <span class="cm-badge cm-badge-red">阻断</span>
                             <% else %>
-                                <span class="label success"><%:Allow%></span>
+                                <span class="cm-badge cm-badge-green">允许</span>
                             <% end %>
                         </td>
                         <td class="cbi-section-table-cell"><%=pcdata(sched.mon)%></td>
@@ -192,9 +180,7 @@
                         <td class="cbi-section-table-cell"><%=pcdata(sched.sat)%></td>
                         <td class="cbi-section-table-cell"><%=pcdata(sched.sun)%></td>
                         <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-negative" onclick="deleteSchedule('<%=pcdata(sched.mac)%>')">
-                                <%:Delete%>
-                            </button>
+                            <button class="btn cbi-button cbi-button-negative cm-btn-sm" onclick="deleteSchedule('<%=pcdata(sched.mac)%>')">删除</button>
                         </td>
                     </tr>
                     <% end %>
@@ -207,66 +193,37 @@
 <script type="text/javascript">
 //<![CDATA[
     function unblockDevice(mac) {
-        if (confirm('<%:Unblock device%> ' + mac + '?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', {
-                'mac': mac
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    alert('<%:Device unblocked successfully%>');
-                    location.reload();
-                } else {
-                    alert('<%:Failed to unblock device%>: ' + (result.error || ''));
-                }
+        if (confirm('确认解除阻断设备 ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', { 'mac': mac }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? location.reload() : alert('解除阻断失败: ' + (r.error||''));
             });
         }
     }
 
     function disallowDevice(mac) {
-        if (confirm('<%:Remove device from allowed list%> ' + mac + '?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', {
-                'mac': mac
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    location.reload();
-                } else {
-                    alert('<%:Failed to remove device%>: ' + (result.error || ''));
-                }
+        if (confirm('确认从允许列表中移除设备 ' + mac + '?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', { 'mac': mac }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? location.reload() : alert('移除失败: ' + (r.error||''));
             });
         }
     }
 
     function removeLimit(mac) {
-        if (confirm('<%:Remove speed limit for%> ' + mac + '?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', {
-                'mac': mac,
-                'download': '0',
-                'upload': '0'
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    alert('<%:Speed limit removed%>');
-                    location.reload();
-                } else {
-                    alert('<%:Failed to remove speed limit%>: ' + (result.error || ''));
-                }
+        if (confirm('确认移除设备 ' + mac + ' 的限速?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', { 'mac': mac, 'download': '0', 'upload': '0' }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? (alert('限速已移除'), location.reload()) : alert('移除限速失败: ' + (r.error||''));
             });
         }
     }
 
     function deleteSchedule(mac) {
-        if (confirm('<%:Delete schedule for%> ' + mac + '?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/schedule")%>', {
-                'action_type': 'delete',
-                'mac': mac
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    location.reload();
-                } else {
-                    alert('<%:Failed to delete schedule%>: ' + (result.error || ''));
-                }
+        if (confirm('确认删除设备 ' + mac + ' 的定时规则?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/schedule")%>', { 'action_type': 'delete', 'mac': mac }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? location.reload() : alert('删除失败: ' + (r.error||''));
             });
         }
     }
@@ -274,25 +231,26 @@
 </script>
 
 <style type="text/css">
-    .label {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 3px;
-        font-size: 11px;
-        font-weight: bold;
+    .cm-section-title {
+        margin-bottom:12px; padding-bottom:8px;
+        border-bottom:2px solid #dee2e6; font-size:15px; color:#343a40;
     }
-    .label.success { background-color: #46a546; color: white; }
-    .label.warning { background-color: #f89406; color: white; }
-    .label.error { background-color: #9d261d; color: white; }
-    .label.info { background-color: #3a87ad; color: white; }
-    .table-wrapper { overflow-x: auto; }
-    .cbi-section { margin-bottom: 20px; }
-    .cbi-section h3 {
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid #ddd;
+    .cm-mode-info { margin-bottom:8px; }
+    .cm-mode-desc { margin:8px 0 0; color:#6c757d; font-size:13px; }
+    .cm-badge {
+        display:inline-block; padding:2px 8px; border-radius:10px;
+        font-size:11px; font-weight:600; margin:1px 2px;
     }
-    .mode-info p { margin: 8px 0 0; color: #555; font-size: 13px; }
+    .cm-badge-green { background:#d4edda; color:#155724; }
+    .cm-badge-red { background:#f8d7da; color:#721c24; }
+    .cm-badge-gray { background:#e2e3e5; color:#383d41; }
+    .cm-badge-blue { background:#d1ecf1; color:#0c5460; }
+    .cm-badge-orange { background:#fff3cd; color:#856404; }
+    .cm-table-wrap { overflow-x:auto; }
+    .cm-mac { font-family:monospace; font-size:12px; }
+    .cm-btn-sm { padding:3px 8px; font-size:12px; margin:1px; }
+    .cm-empty { text-align:center; color:#6c757d; padding:30px 0 !important; font-size:14px; }
+    .cbi-section { margin-bottom:20px; }
 </style>
 
 <%+footer%>

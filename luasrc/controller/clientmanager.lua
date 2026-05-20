@@ -561,34 +561,34 @@ function guess_device_type(vendor, hostname)
 	local h = hostname:lower()
 
 	if h:match("iphone") or h:match("android") or h:match("galaxy") or h:match("pixel") or h:match("huawei%-") or h:match("redmi") then
-		return "Mobile"
+		return "手机"
 	end
 	if h:match("ipad") or h:match("tablet") then
-		return "Tablet"
+		return "平板"
 	end
 	if h:match("tv") or h:match("roku") or h:match("chromecast") or h:match("fire%-tv") then
-		return "Smart TV"
+		return "智能电视"
 	end
 	if h:match("echo") or h:match("home") or h:match("nest") or h:match("ring") or h:match("smart") then
-		return "IoT Device"
+		return "物联网设备"
 	end
 	if v:match("mikrotik") or v:match("ubiquiti") or v:match("tp%-link") or v:match("netgear") or v:match("asus") then
-		return "Router"
+		return "路由器"
 	end
 	if h:match("playstation") or h:match("xbox") or h:match("nintendo") or h:match("switch") then
-		return "Game Console"
+		return "游戏机"
 	end
 	if v:match("apple") and not h:match("tv") then
-		return "Mobile"
+		return "手机"
 	end
 	if v:match("samsung") or v:match("huawei") or v:match("xiaomi") then
-		return "Mobile"
+		return "手机"
 	end
 	if v:match("vmware") or v:match("virtual") then
-		return "Virtual"
+		return "虚拟设备"
 	end
 
-	return "Computer"
+	return "电脑"
 end
 
 function get_traffic_statistics()

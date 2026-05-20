@@ -1,81 +1,80 @@
 <%+header%>
 
 <div class="cbi-map">
-    <h2><%:Device Overview%></h2>
-    <div class="cbi-section-descr">
-        <%:View all connected devices on your network%>
-    </div>
+    <h2 name="content">设备概览</h2>
+    <div class="cbi-section-descr">实时显示所有连接设备，包括在线状态、IP/MAC地址、厂商信息</div>
 
     <div class="cbi-section">
-        <div class="overview-summary">
-            <div class="stat-card">
-                <div class="stat-title"><%:Total Devices%></div>
-                <div class="stat-value"><%=total_devices%></div>
+        <div class="cm-summary">
+            <div class="cm-card cm-card-total">
+                <div class="cm-card-icon">📡</div>
+                <div class="cm-card-body">
+                    <div class="cm-card-label">设备总数</div>
+                    <div class="cm-card-value"><%=total_devices%></div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-title"><%:Online%></div>
-                <div class="stat-value" id="online-count">-</div>
+            <div class="cm-card cm-card-online">
+                <div class="cm-card-icon">🟢</div>
+                <div class="cm-card-body">
+                    <div class="cm-card-label">在线设备</div>
+                    <div class="cm-card-value" id="online-count">-</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-title"><%:Blocked%></div>
-                <div class="stat-value" id="blocked-count">-</div>
+            <div class="cm-card cm-card-blocked">
+                <div class="cm-card-icon">🔴</div>
+                <div class="cm-card-body">
+                    <div class="cm-card-label">已阻断</div>
+                    <div class="cm-card-value" id="blocked-count">-</div>
+                </div>
             </div>
         </div>
 
-        <div class="table-wrapper">
+        <div class="cm-table-wrap">
             <table class="cbi-section-table" id="device-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell"><%:Status%></th>
-                        <th class="cbi-section-table-cell"><%:Device Name%></th>
-                        <th class="cbi-section-table-cell"><%:IP Address%></th>
-                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
-                        <th class="cbi-section-table-cell"><%:Vendor%></th>
-                        <th class="cbi-section-table-cell"><%:Type%></th>
-                        <th class="cbi-section-table-cell"><%:Interface%></th>
-                        <th class="cbi-section-table-cell"><%:Actions%></th>
+                        <th class="cbi-section-table-cell">状态</th>
+                        <th class="cbi-section-table-cell">设备名称</th>
+                        <th class="cbi-section-table-cell">IP地址</th>
+                        <th class="cbi-section-table-cell">MAC地址</th>
+                        <th class="cbi-section-table-cell">厂商</th>
+                        <th class="cbi-section-table-cell">类型</th>
+                        <th class="cbi-section-table-cell">接口</th>
+                        <th class="cbi-section-table-cell">操作</th>
                     </tr>
                 </thead>
                 <tbody id="device-list">
                     <% if #devices == 0 then %>
                     <tr class="cbi-section-table-row">
-                        <td colspan="8" class="cbi-section-table-cell" style="text-align:center;"><%:No devices found%></td>
+                        <td colspan="8" class="cbi-section-table-cell cm-empty">暂无发现设备</td>
                     </tr>
                     <% end %>
                     <% for _, device in ipairs(devices) do %>
                     <tr class="cbi-section-table-row" data-mac="<%=pcdata(device.mac)%>">
                         <td class="cbi-section-table-cell">
                             <% if device.online then %>
-                                <span class="label success"><%:Online%></span>
+                                <span class="cm-badge cm-badge-green">在线</span>
                             <% else %>
-                                <span class="label warning"><%:Offline%></span>
+                                <span class="cm-badge cm-badge-gray">离线</span>
                             <% end %>
                             <% if device.blocked then %>
-                                <span class="label error"><%:Blocked%></span>
+                                <span class="cm-badge cm-badge-red">已阻断</span>
                             <% end %>
                         </td>
                         <td class="cbi-section-table-cell"><%=pcdata(device.hostname)%></td>
                         <td class="cbi-section-table-cell"><%=pcdata(device.ip)%></td>
-                        <td class="cbi-section-table-cell"><%=pcdata(device.mac)%></td>
+                        <td class="cbi-section-table-cell cm-mac"><%=pcdata(device.mac)%></td>
                         <td class="cbi-section-table-cell"><%=pcdata(device.vendor)%></td>
                         <td class="cbi-section-table-cell"><%=pcdata(device.type)%></td>
                         <td class="cbi-section-table-cell"><%=pcdata(device.interface)%></td>
-                        <td class="cbi-section-table-cell">
+                        <td class="cbi-section-table-cell cm-actions">
                             <% if device.blocked then %>
-                                <button class="btn cbi-button cbi-button-positive" onclick="unblockDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">
-                                    <%:Unblock%>
-                                </button>
+                                <button class="btn cbi-button cbi-button-positive cm-btn-sm" onclick="unblockDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">解除阻断</button>
                             <% else %>
-                                <button class="btn cbi-button cbi-button-action" onclick="blockDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">
-                                    <%:Block%>
-                                </button>
+                                <button class="btn cbi-button cbi-button-action cm-btn-sm" onclick="blockDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">阻断</button>
                             <% end %>
-                            <button class="btn cbi-button cbi-button-edit" onclick="limitDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">
-                                <%:Limit%>
-                            </button>
-                            <button class="btn cbi-button" onclick="setAlias('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">
-                                <%:Alias%>
-                            </button>
+                            <button class="btn cbi-button cbi-button-edit cm-btn-sm" onclick="limitDevice('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">限速</button>
+                            <button class="btn cbi-button cm-btn-sm" onclick="setAlias('<%=pcdata(device.mac)%>', '<%=pcdata(device.hostname)%>')">别名</button>
                         </td>
                     </tr>
                     <% end %>
@@ -83,19 +82,17 @@
             </table>
         </div>
 
-        <div class="cbi-section-actions">
-            <button class="btn cbi-button cbi-button-refresh" onclick="refreshDevices()">
-                <%:Refresh%>
-            </button>
-            <label class="cbi-option">
+        <div class="cm-toolbar">
+            <button class="btn cbi-button cbi-button-refresh" onclick="refreshDevices()">🔄 刷新</button>
+            <label class="cm-checkbox-label">
                 <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
-                <%:Auto refresh%>
+                自动刷新
             </label>
-            <select id="refresh-interval" onchange="updateRefreshInterval()">
-                <option value="10">10s</option>
-                <option value="30">30s</option>
-                <option value="60" selected>60s</option>
-                <option value="300">5min</option>
+            <select id="refresh-interval" onchange="updateRefreshInterval()" class="cm-select">
+                <option value="10">10秒</option>
+                <option value="30">30秒</option>
+                <option value="60" selected>1分钟</option>
+                <option value="300">5分钟</option>
             </select>
         </div>
     </div>
@@ -105,216 +102,153 @@
 //<![CDATA[
     var autoRefreshTimer = null;
 
-    function refreshDevices() {
-        location.reload();
-    }
+    function refreshDevices() { location.reload(); }
 
     function toggleAutoRefresh() {
         var cb = document.getElementById('auto-refresh');
-        if (cb.checked) {
-            startAutoRefresh();
-        } else {
-            stopAutoRefresh();
-        }
+        cb.checked ? startAutoRefresh() : stopAutoRefresh();
     }
 
     function startAutoRefresh() {
         stopAutoRefresh();
         var interval = parseInt(document.getElementById('refresh-interval').value) * 1000;
         autoRefreshTimer = setInterval(function() {
-            new XHR().get('<%=url("admin/network/clientmanager/api/devices")%>', null, function(xhr, data) {
+            new XHR().get('<%=url("admin/network/clientmanager/api/devices")%>', null, function(xhr) {
                 var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    updateDeviceTable(result.devices);
-                }
+                if (result.success) updateDeviceTable(result.devices);
             });
         }, interval);
     }
 
     function stopAutoRefresh() {
-        if (autoRefreshTimer) {
-            clearInterval(autoRefreshTimer);
-            autoRefreshTimer = null;
-        }
+        if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
     }
 
     function updateRefreshInterval() {
-        if (document.getElementById('auto-refresh').checked) {
-            startAutoRefresh();
-        }
+        if (document.getElementById('auto-refresh').checked) startAutoRefresh();
     }
 
     function updateDeviceTable(devices) {
         var tbody = document.getElementById('device-list');
         tbody.innerHTML = '';
-        var onlineCount = 0;
-        var blockedCount = 0;
-
+        var onlineCount = 0, blockedCount = 0;
         if (!devices || devices.length === 0) {
-            tbody.innerHTML = '<tr class="cbi-section-table-row"><td colspan="8" class="cbi-section-table-cell" style="text-align:center;"><%:No devices found%></td></tr>';
+            tbody.innerHTML = '<tr class="cbi-section-table-row"><td colspan="8" class="cbi-section-table-cell cm-empty">暂无发现设备</td></tr>';
         } else {
-            devices.forEach(function(device) {
-                if (device.online) onlineCount++;
-                if (device.blocked) blockedCount++;
-
+            devices.forEach(function(d) {
+                if (d.online) onlineCount++;
+                if (d.blocked) blockedCount++;
+                var status = d.online ? '<span class="cm-badge cm-badge-green">在线</span>' : '<span class="cm-badge cm-badge-gray">离线</span>';
+                if (d.blocked) status += ' <span class="cm-badge cm-badge-red">已阻断</span>';
+                var acts = d.blocked
+                    ? '<button class="btn cbi-button cbi-button-positive cm-btn-sm" onclick="unblockDevice(\''+d.mac+'\',\''+(d.hostname||'')+'\')">解除阻断</button>'
+                    : '<button class="btn cbi-button cbi-button-action cm-btn-sm" onclick="blockDevice(\''+d.mac+'\',\''+(d.hostname||'')+'\')">阻断</button>';
+                acts += ' <button class="btn cbi-button cbi-button-edit cm-btn-sm" onclick="limitDevice(\''+d.mac+'\',\''+(d.hostname||'')+'\')">限速</button>';
+                acts += ' <button class="btn cbi-button cm-btn-sm" onclick="setAlias(\''+d.mac+'\',\''+(d.hostname||'')+'\')">别名</button>';
                 var row = document.createElement('tr');
                 row.className = 'cbi-section-table-row';
-                row.setAttribute('data-mac', device.mac);
-
-                var statusHtml = '';
-                if (device.online) {
-                    statusHtml += '<span class="label success"><%:Online%></span> ';
-                } else {
-                    statusHtml += '<span class="label warning"><%:Offline%></span> ';
-                }
-                if (device.blocked) {
-                    statusHtml += '<span class="label error"><%:Blocked%></span>';
-                }
-
-                var actionsHtml = '';
-                if (device.blocked) {
-                    actionsHtml = '<button class="btn cbi-button cbi-button-positive" onclick="unblockDevice(\'' + device.mac + '\', \'' + (device.hostname||'') + '\')"><%:Unblock%></button> ';
-                } else {
-                    actionsHtml = '<button class="btn cbi-button cbi-button-action" onclick="blockDevice(\'' + device.mac + '\', \'' + (device.hostname||'') + '\')"><%:Block%></button> ';
-                }
-                actionsHtml += '<button class="btn cbi-button cbi-button-edit" onclick="limitDevice(\'' + device.mac + '\', \'' + (device.hostname||'') + '\')"><%:Limit%></button> ';
-                actionsHtml += '<button class="btn cbi-button" onclick="setAlias(\'' + device.mac + '\', \'' + (device.hostname||'') + '\')"><%:Alias%></button>';
-
-                row.innerHTML = '<td class="cbi-section-table-cell">' + statusHtml + '</td>' +
-                    '<td class="cbi-section-table-cell">' + (device.hostname || 'Unknown') + '</td>' +
-                    '<td class="cbi-section-table-cell">' + (device.ip || '-') + '</td>' +
-                    '<td class="cbi-section-table-cell">' + device.mac + '</td>' +
-                    '<td class="cbi-section-table-cell">' + (device.vendor || 'Unknown') + '</td>' +
-                    '<td class="cbi-section-table-cell">' + (device.type || '-') + '</td>' +
-                    '<td class="cbi-section-table-cell">' + (device.interface || '-') + '</td>' +
-                    '<td class="cbi-section-table-cell">' + actionsHtml + '</td>';
+                row.innerHTML = '<td class="cbi-section-table-cell">'+status+'</td>'
+                    +'<td class="cbi-section-table-cell">'+(d.hostname||'未知')+'</td>'
+                    +'<td class="cbi-section-table-cell">'+(d.ip||'-')+'</td>'
+                    +'<td class="cbi-section-table-cell cm-mac">'+d.mac+'</td>'
+                    +'<td class="cbi-section-table-cell">'+(d.vendor||'未知')+'</td>'
+                    +'<td class="cbi-section-table-cell">'+(d.type||'-')+'</td>'
+                    +'<td class="cbi-section-table-cell">'+(d.interface||'-')+'</td>'
+                    +'<td class="cbi-section-table-cell cm-actions">'+acts+'</td>';
                 tbody.appendChild(row);
             });
         }
-
         document.getElementById('online-count').textContent = onlineCount;
         document.getElementById('blocked-count').textContent = blockedCount;
     }
 
     function blockDevice(mac, name) {
-        if (confirm('<%:Block device%> "' + name + '" (' + mac + ')?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/block")%>', {
-                'mac': mac,
-                'name': name
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    alert('<%:Device blocked successfully%>');
-                    location.reload();
-                } else {
-                    alert('<%:Failed to block device%>: ' + (result.error || ''));
-                }
+        if (confirm('确认阻断设备 "' + name + '" (' + mac + ')?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/block")%>', { 'mac': mac, 'name': name }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? (alert('设备已阻断'), location.reload()) : alert('阻断失败: ' + (r.error||''));
             });
         }
     }
 
     function unblockDevice(mac, name) {
-        if (confirm('<%:Unblock device%> "' + name + '" (' + mac + ')?')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', {
-                'mac': mac
-            }, function(xhr, data) {
-                var result = JSON.parse(xhr.responseText);
-                if (result.success) {
-                    alert('<%:Device unblocked successfully%>');
-                    location.reload();
-                } else {
-                    alert('<%:Failed to unblock device%>: ' + (result.error || ''));
-                }
+        if (confirm('确认解除阻断设备 "' + name + '" (' + mac + ')?')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/unblock")%>', { 'mac': mac }, function(xhr) {
+                var r = JSON.parse(xhr.responseText);
+                r.success ? (alert('设备已解除阻断'), location.reload()) : alert('解除阻断失败: ' + (r.error||''));
             });
         }
     }
 
     function limitDevice(mac, name) {
-        var download = prompt('<%:Enter download speed limit (kbps, 0 for unlimited):%>', '0');
-        if (download === null) return;
-        if (!/^\d+$/.test(download)) { alert('<%:Invalid speed value%>'); return; }
-
-        var upload = prompt('<%:Enter upload speed limit (kbps, 0 for unlimited):%>', '0');
-        if (upload === null) return;
-        if (!/^\d+$/.test(upload)) { alert('<%:Invalid speed value%>'); return; }
-
-        new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', {
-            'mac': mac,
-            'download': download,
-            'upload': upload
-        }, function(xhr, data) {
-            var result = JSON.parse(xhr.responseText);
-            if (result.success) {
-                alert('<%:Speed limit applied%>');
-                location.reload();
-            } else {
-                alert('<%:Failed to apply speed limit%>: ' + (result.error || ''));
-            }
+        var dl = prompt('输入下载速度限制（kbps，0表示无限制）:', '0');
+        if (dl === null || !/^\d+$/.test(dl)) { if (dl !== null) alert('无效的速度值'); return; }
+        var ul = prompt('输入上传速度限制（kbps，0表示无限制）:', '0');
+        if (ul === null || !/^\d+$/.test(ul)) { if (ul !== null) alert('无效的速度值'); return; }
+        new XHR().post('<%=url("admin/network/clientmanager/api/limit")%>', { 'mac': mac, 'download': dl, 'upload': ul }, function(xhr) {
+            var r = JSON.parse(xhr.responseText);
+            r.success ? (alert('限速已应用'), location.reload()) : alert('限速失败: ' + (r.error||''));
         });
     }
 
     function setAlias(mac, name) {
-        var alias = prompt('<%:Enter alias for device%> ' + mac + ':', name !== 'Unknown' ? name : '');
+        var alias = prompt('输入设备别名 ' + mac + ':', name !== '未知' ? name : '');
         if (alias === null) return;
-
-        new XHR().post('<%=url("admin/network/clientmanager/api/alias")%>', {
-            'mac': mac,
-            'alias': alias
-        }, function(xhr, data) {
-            var result = JSON.parse(xhr.responseText);
-            if (result.success) {
-                location.reload();
-            } else {
-                alert('<%:Failed to save alias%>: ' + (result.error || ''));
-            }
+        new XHR().post('<%=url("admin/network/clientmanager/api/alias")%>', { 'mac': mac, 'alias': alias }, function(xhr) {
+            var r = JSON.parse(xhr.responseText);
+            r.success ? location.reload() : alert('保存别名失败: ' + (r.error||''));
         });
     }
 
     (function() {
-        var onlineCount = 0;
-        var blockedCount = 0;
+        var on=0, bl=0;
         <% for _, device in ipairs(devices) do %>
-            <% if device.online then %> onlineCount++; <% end %>
-            <% if device.blocked then %> blockedCount++; <% end %>
+            <% if device.online then %> on++; <% end %>
+            <% if device.blocked then %> bl++; <% end %>
         <% end %>
-        document.getElementById('online-count').textContent = onlineCount;
-        document.getElementById('blocked-count').textContent = blockedCount;
+        document.getElementById('online-count').textContent = on;
+        document.getElementById('blocked-count').textContent = bl;
     })();
 //]]>
 </script>
 
 <style type="text/css">
-    .label {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 3px;
-        font-size: 11px;
-        font-weight: bold;
-        margin: 1px;
+    .cm-summary { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+    .cm-card {
+        display:flex; align-items:center; gap:12px;
+        background:linear-gradient(135deg,#f8f9fa,#e9ecef);
+        border:1px solid #dee2e6; border-radius:8px;
+        padding:16px 24px; min-width:160px;
+        box-shadow:0 1px 3px rgba(0,0,0,0.08);
+        transition:transform 0.2s,box-shadow 0.2s;
     }
-    .label.success { background-color: #46a546; color: white; }
-    .label.warning { background-color: #f89406; color: white; }
-    .label.error { background-color: #9d261d; color: white; }
-    .table-wrapper { overflow-x: auto; }
-    .overview-summary {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
+    .cm-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    .cm-card-icon { font-size:28px; }
+    .cm-card-label { font-size:12px; color:#6c757d; margin-bottom:2px; }
+    .cm-card-value { font-size:28px; font-weight:700; color:#212529; }
+    .cm-card-online .cm-card-value { color:#28a745; }
+    .cm-card-blocked .cm-card-value { color:#dc3545; }
+    .cm-badge {
+        display:inline-block; padding:2px 8px; border-radius:10px;
+        font-size:11px; font-weight:600; margin:1px 2px;
     }
-    .stat-card {
-        background: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 15px 20px;
-        min-width: 120px;
-        text-align: center;
+    .cm-badge-green { background:#d4edda; color:#155724; }
+    .cm-badge-red { background:#f8d7da; color:#721c24; }
+    .cm-badge-gray { background:#e2e3e5; color:#383d41; }
+    .cm-badge-blue { background:#d1ecf1; color:#0c5460; }
+    .cm-badge-orange { background:#fff3cd; color:#856404; }
+    .cm-table-wrap { overflow-x:auto; border-radius:8px; }
+    .cm-mac { font-family:monospace; font-size:12px; }
+    .cm-actions { white-space:nowrap; }
+    .cm-btn-sm { padding:3px 8px; font-size:12px; margin:1px; }
+    .cm-empty { text-align:center; color:#6c757d; padding:40px 0 !important; font-size:14px; }
+    .cm-toolbar {
+        margin-top:16px; padding:12px 16px;
+        background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px;
+        display:flex; align-items:center; gap:12px; flex-wrap:wrap;
     }
-    .stat-title { font-size: 12px; color: #666; margin-bottom: 5px; }
-    .stat-value { font-size: 24px; font-weight: bold; color: #333; }
-    .cbi-section-actions { margin-top: 15px; display: flex; align-items: center; gap: 15px; }
-    .cbi-section-actions label { font-size: 13px; }
-    .cbi-section-actions select { padding: 4px 8px; }
+    .cm-checkbox-label { font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer; }
+    .cm-select { padding:4px 8px; border-radius:4px; border:1px solid #ced4da; }
 </style>
 
 <%+footer%>

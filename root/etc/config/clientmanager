@@ -16,3 +16,7 @@ config limit
 	option mac ''
 	option download '0'
 	option upload '0'
+
+config firewall 'firewall'
+	option name 'clientmanager'
+	option include_path '/usr/libexec/clientmanager-firewall.sh'

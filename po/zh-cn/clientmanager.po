@@ -56,6 +56,9 @@ msgstr "在线"
 msgid "Offline"
 msgstr "离线"
 
+msgid "Blocked"
+msgstr "已阻断"
+
 msgid "Block"
 msgstr "阻断"
 
@@ -65,29 +68,53 @@ msgstr "解除阻断"
 msgid "Limit"
 msgstr "限速"
 
+msgid "Alias"
+msgstr "别名"
+
 msgid "Refresh"
 msgstr "刷新"
+
+msgid "Auto refresh"
+msgstr "自动刷新"
 
 msgid "Block device"
 msgstr "阻断设备"
 
+msgid "Unblock device"
+msgstr "解除阻断设备"
+
 msgid "Device blocked successfully"
 msgstr "设备已成功阻断"
+
+msgid "Device unblocked successfully"
+msgstr "设备已成功解除阻断"
 
 msgid "Failed to block device"
 msgstr "阻断设备失败"
 
-msgid "Enter download speed limit (KB/s, 0 for unlimited):"
-msgstr "输入下载速度限制（KB/s，0表示无限制）："
+msgid "Failed to unblock device"
+msgstr "解除阻断设备失败"
 
-msgid "Enter upload speed limit (KB/s, 0 for unlimited):"
-msgstr "输入上传速度限制（KB/s，0表示无限制）："
+msgid "Enter download speed limit (kbps, 0 for unlimited):"
+msgstr "输入下载速度限制（kbps，0表示无限制）："
+
+msgid "Enter upload speed limit (kbps, 0 for unlimited):"
+msgstr "输入上传速度限制（kbps，0表示无限制）："
+
+msgid "Invalid speed value"
+msgstr "无效的速度值"
 
 msgid "Speed limit applied"
 msgstr "限速已应用"
 
 msgid "Failed to apply speed limit"
 msgstr "应用限速失败"
+
+msgid "Enter alias for device"
+msgstr "输入设备别名"
+
+msgid "Failed to save alias"
+msgstr "保存别名失败"
 
 msgid "Client Manager Settings"
 msgstr "客户端管理设置"
@@ -146,6 +173,9 @@ msgstr "设备被阻断时通知"
 msgid "Notification email"
 msgstr "通知邮箱"
 
+msgid "Device Aliases"
+msgstr "设备别名"
+
 msgid "Unknown"
 msgstr "未知"
 
@@ -169,3 +199,90 @@ msgstr "路由器"
 
 msgid "Game Console"
 msgstr "游戏机"
+
+msgid "Virtual"
+msgstr "虚拟设备"
+
+msgid "Manage device access and speed limits"
+msgstr "管理设备访问和速度限制"
+
+msgid "Blocked Devices"
+msgstr "已阻断设备"
+
+msgid "Speed Limited Devices"
+msgstr "限速设备"
+
+msgid "Download Limit"
+msgstr "下载限制"
+
+msgid "Upload Limit"
+msgstr "上传限制"
+
+msgid "Remove Limit"
+msgstr "移除限速"
+
+msgid "Unlimited"
+msgstr "无限制"
+
+msgid "No blocked devices"
+msgstr "没有已阻断的设备"
+
+msgid "No speed limited devices"
+msgstr "没有限速设备"
+
+msgid "View traffic usage statistics for all devices"
+msgstr "查看所有设备的流量使用统计"
+
+msgid "Total Devices"
+msgstr "设备总数"
+
+msgid "Total Download"
+msgstr "总下载"
+
+msgid "Total Upload"
+msgstr "总上传"
+
+msgid "Download"
+msgstr "下载"
+
+msgid "Upload"
+msgstr "上传"
+
+msgid "Total"
+msgstr "合计"
+
+msgid "Last Seen"
+msgstr "最后出现"
+
+msgid "Reset Statistics"
+msgstr "重置统计"
+
+msgid "Export CSV"
+msgstr "导出CSV"
+
+msgid "Export JSON"
+msgstr "导出JSON"
+
+msgid "No data available"
+msgstr "暂无数据"
+
+msgid "No devices found"
+msgstr "未发现设备"
+
+msgid "Are you sure you want to reset all statistics? This action cannot be undone."
+msgstr "确定要重置所有统计数据吗？此操作无法撤销。"
+
+msgid "Statistics reset successfully"
+msgstr "统计数据已重置"
+
+msgid "Failed to load statistics"
+msgstr "加载统计数据失败"
+
+msgid "Remove speed limit for"
+msgstr "移除限速："
+
+msgid "Speed limit removed"
+msgstr "限速已移除"
+
+msgid "Failed to remove speed limit"
+msgstr "移除限速失败"

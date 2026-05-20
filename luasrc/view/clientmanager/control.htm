@@ -6,7 +6,6 @@
         <%:Manage device access and speed limits%>
     </div>
 
-    <!-- Blocked Devices Section -->
     <div class="cbi-section">
         <h3><%:Blocked Devices%></h3>
         <div class="table-wrapper">
@@ -19,27 +18,33 @@
                     </tr>
                 </thead>
                 <tbody id="blocked-list">
-                    <% for _, mac in ipairs(blocked_devices) do
-                        if mac and mac ~= "" then %>
+                    <% local has_blocked = false %>
+                    <% for _, mac in ipairs(blocked_devices) do %>
+                        <% if mac and mac ~= "" then %>
+                            <% has_blocked = true %>
                     <tr class="cbi-section-table-row">
-                        <td class="cbi-section-table-cell"><%=mac%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
                         <td class="cbi-section-table-cell">
                             <span class="label error"><%:Blocked%></span>
                         </td>
                         <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-positive" onclick="unblockDevice('<%=mac%>')">
+                            <button class="btn cbi-button cbi-button-positive" onclick="unblockDevice('<%=pcdata(mac)%>')">
                                 <%:Unblock%>
                             </button>
                         </td>
                     </tr>
                     <%  end
                     end %>
+                    <% if not has_blocked then %>
+                    <tr class="cbi-section-table-row">
+                        <td colspan="3" class="cbi-section-table-cell" style="text-align:center;"><%:No blocked devices%></td>
+                    </tr>
+                    <% end %>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Speed Limited Devices Section -->
     <div class="cbi-section">
         <h3><%:Speed Limited Devices%></h3>
         <div class="table-wrapper">
@@ -53,24 +58,39 @@
                     </tr>
                 </thead>
                 <tbody id="limited-list">
-                    <% for mac, limits in pairs(limited_devices) do
-                        if mac and mac ~= "" then %>
+                    <% local has_limited = false %>
+                    <% for mac, limits in pairs(limited_devices) do %>
+                        <% if mac and mac ~= "" then %>
+                            <% has_limited = true %>
                     <tr class="cbi-section-table-row">
-                        <td class="cbi-section-table-cell"><%=mac%></td>
+                        <td class="cbi-section-table-cell"><%=pcdata(mac)%></td>
                         <td class="cbi-section-table-cell">
-                            <%=limits.download ~= "0" and limits.download .. " kbps" or "<%:Unlimited%>"%>
+                            <% if limits.download ~= "0" then %>
+                                <%=pcdata(limits.download)%> kbps
+                            <% else %>
+                                <%:Unlimited%>
+                            <% end %>
                         </td>
                         <td class="cbi-section-table-cell">
-                            <%=limits.upload ~= "0" and limits.upload .. " kbps" or "<%:Unlimited%>"%>
+                            <% if limits.upload ~= "0" then %>
+                                <%=pcdata(limits.upload)%> kbps
+                            <% else %>
+                                <%:Unlimited%>
+                            <% end %>
                         </td>
                         <td class="cbi-section-table-cell">
-                            <button class="btn cbi-button cbi-button-negative" onclick="removeLimit('<%=mac%>')">
+                            <button class="btn cbi-button cbi-button-negative" onclick="removeLimit('<%=pcdata(mac)%>')">
                                 <%:Remove Limit%>
                             </button>
                         </td>
                     </tr>
                     <%  end
                     end %>
+                    <% if not has_limited then %>
+                    <tr class="cbi-section-table-row">
+                        <td colspan="4" class="cbi-section-table-cell" style="text-align:center;"><%:No speed limited devices%></td>
+                    </tr>
+                    <% end %>
                 </tbody>
             </table>
         </div>
@@ -89,7 +109,7 @@
                     alert('<%:Device unblocked successfully%>');
                     location.reload();
                 } else {
-                    alert('<%:Failed to unblock device%>:' + (result.error || ''));
+                    alert('<%:Failed to unblock device%>: ' + (result.error || ''));
                 }
             });
         }
@@ -107,7 +127,7 @@
                     alert('<%:Speed limit removed%>');
                     location.reload();
                 } else {
-                    alert('<%:Failed to remove speed limit%>:' + (result.error || ''));
+                    alert('<%:Failed to remove speed limit%>: ' + (result.error || ''));
                 }
             });
         }
@@ -123,24 +143,11 @@
         font-size: 11px;
         font-weight: bold;
     }
-    .label.success {
-        background-color: #46a546;
-        color: white;
-    }
-    .label.warning {
-        background-color: #f89406;
-        color: white;
-    }
-    .label.error {
-        background-color: #9d261d;
-        color: white;
-    }
-    .table-wrapper {
-        overflow-x: auto;
-    }
-    .cbi-section {
-        margin-bottom: 20px;
-    }
+    .label.success { background-color: #46a546; color: white; }
+    .label.warning { background-color: #f89406; color: white; }
+    .label.error { background-color: #9d261d; color: white; }
+    .table-wrapper { overflow-x: auto; }
+    .cbi-section { margin-bottom: 20px; }
     .cbi-section h3 {
         margin-bottom: 10px;
         padding-bottom: 5px;

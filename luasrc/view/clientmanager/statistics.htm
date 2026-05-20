@@ -36,7 +36,6 @@
                     </tr>
                 </thead>
                 <tbody id="stats-list">
-                    <!-- Data will be loaded via AJAX -->
                 </tbody>
             </table>
         </div>
@@ -48,6 +47,12 @@
             <button class="btn cbi-button cbi-button-negative" onclick="resetStats()">
                 <%:Reset Statistics%>
             </button>
+            <button class="btn cbi-button" onclick="exportStats('csv')">
+                <%:Export CSV%>
+            </button>
+            <button class="btn cbi-button" onclick="exportStats('json')">
+                <%:Export JSON%>
+            </button>
         </div>
     </div>
 </div>
@@ -55,6 +60,7 @@
 <script type="text/javascript">
 //<![CDATA[
     function formatBytes(bytes) {
+        bytes = parseInt(bytes) || 0;
         if (bytes === 0) return '0 B';
         var k = 1024;
         var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -62,11 +68,26 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function loadStats() {
         new XHR().get('<%=url("admin/network/clientmanager/api/traffic")%>', null, function(xhr, data) {
-            var result = JSON.parse(xhr.responseText);
-            if (result.success && result.data) {
-                updateStatsTable(result.data);
+            try {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success && result.data) {
+                    updateStatsTable(result.data);
+                }
+            } catch(e) {
+                document.getElementById('stats-list').innerHTML =
+                    '<tr><td colspan="7" class="cbi-section-table-cell" style="text-align:center;"><%:Failed to load statistics%></td></tr>';
             }
         });
     }
@@ -80,18 +101,20 @@
 
         if (data.devices && data.devices.length > 0) {
             data.devices.forEach(function(device) {
-                totalDownload += parseInt(device.download) || 0;
-                totalUpload += parseInt(device.upload) || 0;
+                var dl = parseInt(device.download) || 0;
+                var ul = parseInt(device.upload) || 0;
+                totalDownload += dl;
+                totalUpload += ul;
 
                 var row = document.createElement('tr');
                 row.className = 'cbi-section-table-row';
-                row.innerHTML = '<td class="cbi-section-table-cell">' + (device.hostname || 'Unknown') + '</td>' +
-                               '<td class="cbi-section-table-cell">' + device.mac + '</td>' +
-                               '<td class="cbi-section-table-cell">' + (device.ip || '-') + '</td>' +
-                               '<td class="cbi-section-table-cell">' + formatBytes(device.download) + '</td>' +
-                               '<td class="cbi-section-table-cell">' + formatBytes(device.upload) + '</td>' +
-                               '<td class="cbi-section-table-cell">' + formatBytes(parseInt(device.download) + parseInt(device.upload)) + '</td>' +
-                               '<td class="cbi-section-table-cell">' + (device.last_seen || '-') + '</td>';
+                row.innerHTML = '<td class="cbi-section-table-cell">' + escapeHtml(device.hostname || 'Unknown') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.mac) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.ip || '-') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(dl) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(ul) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(dl + ul) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.last_seen || '-') + '</td>';
                 tbody.appendChild(row);
             });
         } else {
@@ -100,7 +123,6 @@
             tbody.appendChild(row);
         }
 
-        // Update summary
         document.getElementById('total-devices').textContent = data.devices ? data.devices.length : 0;
         document.getElementById('total-download').textContent = formatBytes(totalDownload);
         document.getElementById('total-upload').textContent = formatBytes(totalUpload);
@@ -112,7 +134,6 @@
 
     function resetStats() {
         if (confirm('<%:Are you sure you want to reset all statistics? This action cannot be undone.%>')) {
-            // Call reset script via backend
             new XHR().post('<%=url("admin/network/clientmanager/api/reset")%>', {}, function(xhr, data) {
                 var result = JSON.parse(xhr.responseText);
                 if (result.success) {
@@ -123,7 +144,10 @@
         }
     }
 
-    // Load stats on page load
+    function exportStats(format) {
+        window.location.href = '<%=url("admin/network/clientmanager/api/export")%>?format=' + format;
+    }
+
     document.addEventListener('DOMContentLoaded', loadStats);
 //]]>
 </script>
@@ -143,25 +167,11 @@
         min-width: 150px;
         text-align: center;
     }
-    .stat-title {
-        font-size: 12px;
-        color: #666;
-        margin-bottom: 5px;
-    }
-    .stat-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-    }
-    .table-wrapper {
-        overflow-x: auto;
-    }
-    .cbi-section-actions {
-        margin-top: 15px;
-    }
-    .cbi-section-actions button {
-        margin-right: 10px;
-    }
+    .stat-title { font-size: 12px; color: #666; margin-bottom: 5px; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #333; }
+    .table-wrapper { overflow-x: auto; }
+    .cbi-section-actions { margin-top: 15px; }
+    .cbi-section-actions button { margin-right: 10px; }
 </style>
 
 <%+footer%>

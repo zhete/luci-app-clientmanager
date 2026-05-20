@@ -1,0 +1,36 @@
+#!/bin/sh /etc/rc.common
+# Client Manager init script
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+start_service() {
+    local enabled
+    enabled=$(uci get clientmanager.global.enabled 2>/dev/null)
+    [ "$enabled" = "1" ] || return 0
+
+    /usr/libexec/clientmanager-block.sh restore 2>/dev/null
+
+    local traffic_monitor
+    traffic_monitor=$(uci get clientmanager.global.traffic_monitor 2>/dev/null)
+    if [ "$traffic_monitor" = "1" ]; then
+        /usr/libexec/clientmanager-traffic.sh collect 2>/dev/null
+    fi
+
+    procd_open_instance
+    procd_set_param command /usr/libexec/clientmanager-watchdog.sh
+    procd_set_param respawn 3600 5 5
+    procd_set_param stderr 1
+    procd_set_param stdout 1
+    procd_close_instance
+}
+
+stop_service() {
+    :
+}
+
+service_triggers() {
+    procd_add_reload_trigger "clientmanager"
+}

@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clientmanager
-PKG_VERSION:=1.0.0
+PKG_VERSION:=1.1.0
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Your Name <your.email@example.com>
@@ -26,6 +26,19 @@ define Package/$(PKG_NAME)/postinst
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	( . /etc/uci-defaults/luci-clientmanager ) && rm -f /etc/uci-defaults/luci-clientmanager
 	chmod +x /usr/libexec/clientmanager-*.sh 2>/dev/null
+	chmod +x /etc/init.d/clientmanager 2>/dev/null
+	/etc/init.d/clientmanager enable 2>/dev/null
+	/etc/init.d/clientmanager start 2>/dev/null
+fi
+exit 0
+endef
+
+define Package/$(PKG_NAME)/postrm
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	/etc/init.d/clientmanager disable 2>/dev/null
+	/etc/init.d/clientmanager stop 2>/dev/null
+	iptables -F CLIENTMGR_ACCT 2>/dev/null
 fi
 exit 0
 endef

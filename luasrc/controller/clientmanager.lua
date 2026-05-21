@@ -33,37 +33,37 @@ function index()
 		4)
 
 	entry({"admin", "network", "clientmanager", "api", "devices"},
-		call("api_devices"))
+		call("api_devices")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "block"},
-		call("api_block_device"))
+		call("api_block_device")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "unblock"},
-		call("api_unblock_device"))
+		call("api_unblock_device")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "limit"},
-		call("api_limit_speed"))
+		call("api_limit_speed")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "traffic"},
-		call("api_traffic_data"))
+		call("api_traffic_data")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "reset"},
-		call("api_reset_stats"))
+		call("api_reset_stats")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "export"},
-		call("api_export_traffic"))
+		call("api_export_traffic")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "alias"},
-		call("api_set_alias"))
+		call("api_set_alias")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "schedule"},
-		call("api_schedule"))
+		call("api_schedule")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "history"},
-		call("api_connection_history"))
+		call("api_connection_history")).leaf = true
 
 	entry({"admin", "network", "clientmanager", "api", "realtime"},
-		call("api_realtime_speed"))
+		call("api_realtime_speed")).leaf = true
 end
 
 function action_overview()

@@ -1,69 +1,64 @@
 module("luci.controller.clientmanager", package.seeall)
 
 function index()
-	if not nixio.fs.access("/etc/config/clientmanager") then
-		return
-	end
-
-	local page = entry({"admin", "network", "clientmanager"},
+	local page = entry({"admin", "services", "clientmanager"},
 		firstchild(),
-		_("Client Manager"),
+		_("客户端管理"),
 		60)
 	page.dependent = false
-	page.acl_depends = {}
 
-	entry({"admin", "network", "clientmanager", "overview"},
+	entry({"admin", "services", "clientmanager", "overview"},
 		call("action_overview"),
-		_("Device Overview"),
+		_("设备概览"),
 		1)
 
-	entry({"admin", "network", "clientmanager", "control"},
+	entry({"admin", "services", "clientmanager", "control"},
 		call("action_control"),
-		_("Access Control"),
+		_("访问控制"),
 		2)
 
-	entry({"admin", "network", "clientmanager", "statistics"},
+	entry({"admin", "services", "clientmanager", "statistics"},
 		call("action_statistics"),
-		_("Traffic Statistics"),
+		_("流量统计"),
 		3)
 
-	entry({"admin", "network", "clientmanager", "settings"},
+	entry({"admin", "services", "clientmanager", "settings"},
 		cbi("clientmanager/settings"),
-		_("Settings"),
+		_("设置"),
 		4)
 
-	entry({"admin", "network", "clientmanager", "api", "devices"},
-		call("api_devices")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "devices"},
+		call("api_devices"))
 
-	entry({"admin", "network", "clientmanager", "api", "block"},
-		call("api_block_device")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "block"},
+		call("api_block_device"))
 
-	entry({"admin", "network", "clientmanager", "api", "unblock"},
-		call("api_unblock_device")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "unblock"},
+		call("api_unblock_device"))
 
-	entry({"admin", "network", "clientmanager", "api", "limit"},
-		call("api_limit_speed")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "limit"},
+		call("api_limit_speed"))
 
-	entry({"admin", "network", "clientmanager", "api", "traffic"},
-		call("api_traffic_data")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "traffic"},
+		call("api_traffic_data"))
 
-	entry({"admin", "network", "clientmanager", "api", "reset"},
-		call("api_reset_stats")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "reset"},
+		call("api_reset_stats"))
 
-	entry({"admin", "network", "clientmanager", "api", "export"},
-		call("api_export_traffic")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "export"},
+		call("api_export_traffic"))
 
-	entry({"admin", "network", "clientmanager", "api", "alias"},
-		call("api_set_alias")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "alias"},
+		call("api_set_alias"))
 
-	entry({"admin", "network", "clientmanager", "api", "schedule"},
-		call("api_schedule")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "schedule"},
+		call("api_schedule"))
 
-	entry({"admin", "network", "clientmanager", "api", "history"},
-		call("api_connection_history")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "history"},
+		call("api_connection_history"))
 
-	entry({"admin", "network", "clientmanager", "api", "realtime"},
-		call("api_realtime_speed")).leaf = true
+	entry({"admin", "services", "clientmanager", "api", "realtime"},
+		call("api_realtime_speed"))
 end
 
 function action_overview()

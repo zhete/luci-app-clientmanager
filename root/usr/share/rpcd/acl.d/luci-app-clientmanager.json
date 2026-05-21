@@ -1,0 +1,21 @@
+{
+	"luci-app-clientmanager": {
+		"description": "Grant access to Client Manager",
+		"read": {
+			"ubus": {
+				"luci": [ "clientmanager" ]
+			},
+			"file": {
+				"/etc/config/clientmanager": [ "read" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci": [ "clientmanager" ]
+			},
+			"file": {
+				"/etc/config/clientmanager": [ "write" ]
+			}
+		}
+	}
+}

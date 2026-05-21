@@ -10,7 +10,7 @@ function index()
 		_("Client Manager"),
 		60)
 	page.dependent = false
-	page.acl_depends = { "luci-app-clientmanager" }
+	page.acl_depends = {}
 
 	entry({"admin", "network", "clientmanager", "overview"},
 		call("action_overview"),

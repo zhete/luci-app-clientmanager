@@ -1,65 +1,69 @@
 module("luci.controller.clientmanager", package.seeall)
 
 function index()
-	local page = entry({"admin", "services", "clientmanager"},
+	if not nixio.fs.access("/etc/config/clientmanager") then
+		return
+	end
+
+	local page = entry({"admin", "network", "clientmanager"},
 		firstchild(),
-		_("客户端管理"),
+		_("Client Manager"),
 		60)
 	page.dependent = false
 	page.acl_depends = { "luci-app-clientmanager" }
 
-	entry({"admin", "services", "clientmanager", "overview"},
+	entry({"admin", "network", "clientmanager", "overview"},
 		call("action_overview"),
-		_("设备概览"),
+		_("Device Overview"),
 		1)
 
-	entry({"admin", "services", "clientmanager", "control"},
+	entry({"admin", "network", "clientmanager", "control"},
 		call("action_control"),
-		_("访问控制"),
+		_("Access Control"),
 		2)
 
-	entry({"admin", "services", "clientmanager", "statistics"},
+	entry({"admin", "network", "clientmanager", "statistics"},
 		call("action_statistics"),
-		_("流量统计"),
+		_("Traffic Statistics"),
 		3)
 
-	entry({"admin", "services", "clientmanager", "settings"},
+	entry({"admin", "network", "clientmanager", "settings"},
 		cbi("clientmanager/settings"),
-		_("设置"),
+		_("Settings"),
 		4)
 
-	entry({"admin", "services", "clientmanager", "api", "devices"},
-		call("api_devices"))
+	entry({"admin", "network", "clientmanager", "api", "devices"},
+		call("api_devices")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "block"},
-		call("api_block_device"))
+	entry({"admin", "network", "clientmanager", "api", "block"},
+		call("api_block_device")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "unblock"},
-		call("api_unblock_device"))
+	entry({"admin", "network", "clientmanager", "api", "unblock"},
+		call("api_unblock_device")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "limit"},
-		call("api_limit_speed"))
+	entry({"admin", "network", "clientmanager", "api", "limit"},
+		call("api_limit_speed")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "traffic"},
-		call("api_traffic_data"))
+	entry({"admin", "network", "clientmanager", "api", "traffic"},
+		call("api_traffic_data")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "reset"},
-		call("api_reset_stats"))
+	entry({"admin", "network", "clientmanager", "api", "reset"},
+		call("api_reset_stats")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "export"},
-		call("api_export_traffic"))
+	entry({"admin", "network", "clientmanager", "api", "export"},
+		call("api_export_traffic")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "alias"},
-		call("api_set_alias"))
+	entry({"admin", "network", "clientmanager", "api", "alias"},
+		call("api_set_alias")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "schedule"},
-		call("api_schedule"))
+	entry({"admin", "network", "clientmanager", "api", "schedule"},
+		call("api_schedule")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "history"},
-		call("api_connection_history"))
+	entry({"admin", "network", "clientmanager", "api", "history"},
+		call("api_connection_history")).leaf = true
 
-	entry({"admin", "services", "clientmanager", "api", "realtime"},
-		call("api_realtime_speed"))
+	entry({"admin", "network", "clientmanager", "api", "realtime"},
+		call("api_realtime_speed")).leaf = true
 end
 
 function action_overview()
@@ -561,34 +565,34 @@ function guess_device_type(vendor, hostname)
 	local h = hostname:lower()
 
 	if h:match("iphone") or h:match("android") or h:match("galaxy") or h:match("pixel") or h:match("huawei%-") or h:match("redmi") then
-		return "手机"
+		return "Mobile"
 	end
 	if h:match("ipad") or h:match("tablet") then
-		return "平板"
+		return "Tablet"
 	end
 	if h:match("tv") or h:match("roku") or h:match("chromecast") or h:match("fire%-tv") then
-		return "智能电视"
+		return "Smart TV"
 	end
 	if h:match("echo") or h:match("home") or h:match("nest") or h:match("ring") or h:match("smart") then
-		return "物联网设备"
+		return "IoT Device"
 	end
 	if v:match("mikrotik") or v:match("ubiquiti") or v:match("tp%-link") or v:match("netgear") or v:match("asus") then
-		return "路由器"
+		return "Router"
 	end
 	if h:match("playstation") or h:match("xbox") or h:match("nintendo") or h:match("switch") then
-		return "游戏机"
+		return "Game Console"
 	end
 	if v:match("apple") and not h:match("tv") then
-		return "手机"
+		return "Mobile"
 	end
 	if v:match("samsung") or v:match("huawei") or v:match("xiaomi") then
-		return "手机"
+		return "Mobile"
 	end
 	if v:match("vmware") or v:match("virtual") then
-		return "虚拟设备"
+		return "Virtual"
 	end
 
-	return "电脑"
+	return "Computer"
 end
 
 function get_traffic_statistics()

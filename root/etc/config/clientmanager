@@ -6,12 +6,38 @@ config global 'global'
 	option data_retention '30'
 	option scan_interval '60'
 	option new_device_alert '0'
+	list blocked ''
+	list allowed ''
 
 config notification 'notification'
 	option enabled '0'
 	option new_device '1'
 	option device_blocked '1'
 	option email ''
+
+config schedule
+	option mac ''
+	option name ''
+	option action 'block'
+	option mon_start ''
+	option mon_end ''
+	option tue_start ''
+	option tue_end ''
+	option wed_start ''
+	option thu_start ''
+	option fri_start ''
+	option sat_start ''
+	option sun_start ''
+
+config limit
+	option mac ''
+	option download '0'
+	option upload '0'
+
+config device
+	option mac ''
+	option alias ''
+	option name ''
 
 config firewall 'firewall'
 	option name 'clientmanager'

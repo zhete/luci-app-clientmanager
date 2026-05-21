@@ -1,45 +1,38 @@
 <%+header%>
 
 <div class="cbi-map">
-    <h2 name="content">流量统计</h2>
-    <div class="cbi-section-descr">查看所有设备的流量使用情况</div>
+    <h2><%:Traffic Statistics%></h2>
+    <div class="cbi-section-descr">
+        <%:View traffic usage statistics for all devices%>
+    </div>
 
     <div class="cbi-section">
-        <div class="cm-summary">
-            <div class="cm-card cm-card-total">
-                <div class="cm-card-icon">📊</div>
-                <div class="cm-card-body">
-                    <div class="cm-card-label">设备总数</div>
-                    <div class="cm-card-value" id="total-devices">-</div>
-                </div>
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Devices%></div>
+                <div class="stat-value" id="total-devices">-</div>
             </div>
-            <div class="cm-card cm-card-download">
-                <div class="cm-card-icon">⬇️</div>
-                <div class="cm-card-body">
-                    <div class="cm-card-label">总下载</div>
-                    <div class="cm-card-value" id="total-download">-</div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Download%></div>
+                <div class="stat-value" id="total-download">-</div>
             </div>
-            <div class="cm-card cm-card-upload">
-                <div class="cm-card-icon">⬆️</div>
-                <div class="cm-card-body">
-                    <div class="cm-card-label">总上传</div>
-                    <div class="cm-card-value" id="total-upload">-</div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-title"><%:Total Upload%></div>
+                <div class="stat-value" id="total-upload">-</div>
             </div>
         </div>
 
-        <div class="cm-table-wrap">
+        <div class="table-wrapper">
             <table class="cbi-section-table" id="stats-table">
                 <thead>
                     <tr class="cbi-section-table-titles">
-                        <th class="cbi-section-table-cell">设备名称</th>
-                        <th class="cbi-section-table-cell">MAC地址</th>
-                        <th class="cbi-section-table-cell">IP地址</th>
-                        <th class="cbi-section-table-cell">下载</th>
-                        <th class="cbi-section-table-cell">上传</th>
-                        <th class="cbi-section-table-cell">合计</th>
-                        <th class="cbi-section-table-cell">最后出现</th>
+                        <th class="cbi-section-table-cell"><%:Device Name%></th>
+                        <th class="cbi-section-table-cell"><%:MAC Address%></th>
+                        <th class="cbi-section-table-cell"><%:IP Address%></th>
+                        <th class="cbi-section-table-cell"><%:Download%></th>
+                        <th class="cbi-section-table-cell"><%:Upload%></th>
+                        <th class="cbi-section-table-cell"><%:Total%></th>
+                        <th class="cbi-section-table-cell"><%:Last Seen%></th>
                     </tr>
                 </thead>
                 <tbody id="stats-list">
@@ -47,11 +40,19 @@
             </table>
         </div>
 
-        <div class="cm-toolbar">
-            <button class="btn cbi-button cbi-button-refresh" onclick="refreshStats()">🔄 刷新</button>
-            <button class="btn cbi-button cbi-button-negative" onclick="resetStats()">🗑️ 重置统计</button>
-            <button class="btn cbi-button" onclick="exportStats('csv')">📥 导出CSV</button>
-            <button class="btn cbi-button" onclick="exportStats('json')">📥 导出JSON</button>
+        <div class="cbi-section-actions">
+            <button class="btn cbi-button cbi-button-refresh" onclick="refreshStats()">
+                <%:Refresh%>
+            </button>
+            <button class="btn cbi-button cbi-button-negative" onclick="resetStats()">
+                <%:Reset Statistics%>
+            </button>
+            <button class="btn cbi-button" onclick="exportStats('csv')">
+                <%:Export CSV%>
+            </button>
+            <button class="btn cbi-button" onclick="exportStats('json')">
+                <%:Export JSON%>
+            </button>
         </div>
     </div>
 </div>
@@ -69,17 +70,24 @@
 
     function escapeHtml(str) {
         if (!str) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function loadStats() {
-        new XHR().get('<%=url("admin/network/clientmanager/api/traffic")%>', null, function(xhr) {
+        new XHR().get('<%=url("admin/network/clientmanager/api/traffic")%>', null, function(xhr, data) {
             try {
                 var result = JSON.parse(xhr.responseText);
-                if (result.success && result.data) updateStatsTable(result.data);
+                if (result.success && result.data) {
+                    updateStatsTable(result.data);
+                }
             } catch(e) {
                 document.getElementById('stats-list').innerHTML =
-                    '<tr><td colspan="7" class="cbi-section-table-cell cm-empty">加载统计数据失败</td></tr>';
+                    '<tr><td colspan="7" class="cbi-section-table-cell" style="text-align:center;"><%:Failed to load statistics%></td></tr>';
             }
         });
     }
@@ -87,28 +95,31 @@
     function updateStatsTable(data) {
         var tbody = document.getElementById('stats-list');
         tbody.innerHTML = '';
-        var totalDownload = 0, totalUpload = 0;
+
+        var totalDownload = 0;
+        var totalUpload = 0;
 
         if (data.devices && data.devices.length > 0) {
-            data.devices.forEach(function(d) {
-                var dl = parseInt(d.download) || 0;
-                var ul = parseInt(d.upload) || 0;
+            data.devices.forEach(function(device) {
+                var dl = parseInt(device.download) || 0;
+                var ul = parseInt(device.upload) || 0;
                 totalDownload += dl;
                 totalUpload += ul;
+
                 var row = document.createElement('tr');
                 row.className = 'cbi-section-table-row';
-                row.innerHTML = '<td class="cbi-section-table-cell">' + escapeHtml(d.hostname||'未知') + '</td>'
-                    + '<td class="cbi-section-table-cell cm-mac">' + escapeHtml(d.mac) + '</td>'
-                    + '<td class="cbi-section-table-cell">' + escapeHtml(d.ip||'-') + '</td>'
-                    + '<td class="cbi-section-table-cell"><span class="cm-badge cm-badge-blue">⬇ ' + formatBytes(dl) + '</span></td>'
-                    + '<td class="cbi-section-table-cell"><span class="cm-badge cm-badge-green">⬆ ' + formatBytes(ul) + '</span></td>'
-                    + '<td class="cbi-section-table-cell"><strong>' + formatBytes(dl+ul) + '</strong></td>'
-                    + '<td class="cbi-section-table-cell">' + escapeHtml(d.last_seen||'-') + '</td>';
+                row.innerHTML = '<td class="cbi-section-table-cell">' + escapeHtml(device.hostname || 'Unknown') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.mac) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.ip || '-') + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(dl) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(ul) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + formatBytes(dl + ul) + '</td>' +
+                               '<td class="cbi-section-table-cell">' + escapeHtml(device.last_seen || '-') + '</td>';
                 tbody.appendChild(row);
             });
         } else {
             var row = document.createElement('tr');
-            row.innerHTML = '<td colspan="7" class="cbi-section-table-cell cm-empty">暂无流量数据</td>';
+            row.innerHTML = '<td colspan="7" class="cbi-section-table-cell" style="text-align: center;"><%:No data available%></td>';
             tbody.appendChild(row);
         }
 
@@ -117,13 +128,18 @@
         document.getElementById('total-upload').textContent = formatBytes(totalUpload);
     }
 
-    function refreshStats() { loadStats(); }
+    function refreshStats() {
+        loadStats();
+    }
 
     function resetStats() {
-        if (confirm('确认重置所有统计数据？此操作无法撤销。')) {
-            new XHR().post('<%=url("admin/network/clientmanager/api/reset")%>', {}, function(xhr) {
-                var r = JSON.parse(xhr.responseText);
-                if (r.success) { alert('统计数据已重置'); loadStats(); }
+        if (confirm('<%:Are you sure you want to reset all statistics? This action cannot be undone.%>')) {
+            new XHR().post('<%=url("admin/network/clientmanager/api/reset")%>', {}, function(xhr, data) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    alert('<%:Statistics reset successfully%>');
+                    loadStats();
+                }
             });
         }
     }
@@ -137,35 +153,25 @@
 </script>
 
 <style type="text/css">
-    .cm-summary { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-    .cm-card {
-        display:flex; align-items:center; gap:12px;
-        background:linear-gradient(135deg,#f8f9fa,#e9ecef);
-        border:1px solid #dee2e6; border-radius:8px;
-        padding:16px 24px; min-width:160px;
-        box-shadow:0 1px 3px rgba(0,0,0,0.08);
-        transition:transform 0.2s,box-shadow 0.2s;
+    .stats-summary {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
     }
-    .cm-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.12); }
-    .cm-card-icon { font-size:28px; }
-    .cm-card-label { font-size:12px; color:#6c757d; margin-bottom:2px; }
-    .cm-card-value { font-size:24px; font-weight:700; color:#212529; }
-    .cm-card-download .cm-card-value { color:#0c5460; }
-    .cm-card-upload .cm-card-value { color:#155724; }
-    .cm-badge {
-        display:inline-block; padding:2px 8px; border-radius:10px;
-        font-size:11px; font-weight:600; margin:1px 2px;
+    .stat-card {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px 20px;
+        min-width: 150px;
+        text-align: center;
     }
-    .cm-badge-green { background:#d4edda; color:#155724; }
-    .cm-badge-blue { background:#d1ecf1; color:#0c5460; }
-    .cm-table-wrap { overflow-x:auto; }
-    .cm-mac { font-family:monospace; font-size:12px; }
-    .cm-empty { text-align:center; color:#6c757d; padding:30px 0 !important; font-size:14px; }
-    .cm-toolbar {
-        margin-top:16px; padding:12px 16px;
-        background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px;
-        display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    }
+    .stat-title { font-size: 12px; color: #666; margin-bottom: 5px; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #333; }
+    .table-wrapper { overflow-x: auto; }
+    .cbi-section-actions { margin-top: 15px; }
+    .cbi-section-actions button { margin-right: 10px; }
 </style>
 
 <%+footer%>

@@ -80,11 +80,6 @@ restore_rules() {
 
     for mac in $blocked_list; do
         [ -z "$mac" ] && continue
-        
-        # 验证 MAC 格式
-        if ! echo "$mac" | grep -qE '^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'; then
-            continue
-        fi
 
         if ! iptables -C FORWARD -m mac --mac-source "$mac" -j DROP 2>/dev/null; then
             iptables -I FORWARD -m mac --mac-source "$mac" -j DROP

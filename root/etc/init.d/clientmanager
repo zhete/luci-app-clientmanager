@@ -7,20 +7,16 @@ STOP=10
 USE_PROCD=1
 
 start_service() {
-    # 检查配置文件是否存在
-    [ -f /etc/config/clientmanager ] || return 0
-    
     local enabled
     enabled=$(uci get clientmanager.global.enabled 2>/dev/null)
     [ "$enabled" = "1" ] || return 0
 
-    # 恢复阻断规则（静默处理错误）
-    /usr/libexec/clientmanager-block.sh restore >/dev/null 2>&1
+    /usr/libexec/clientmanager-block.sh restore 2>/dev/null
 
     local traffic_monitor
     traffic_monitor=$(uci get clientmanager.global.traffic_monitor 2>/dev/null)
     if [ "$traffic_monitor" = "1" ]; then
-        /usr/libexec/clientmanager-traffic.sh collect >/dev/null 2>&1
+        /usr/libexec/clientmanager-traffic.sh collect 2>/dev/null
     fi
 
     procd_open_instance
